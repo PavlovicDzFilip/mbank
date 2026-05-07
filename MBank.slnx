@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MBank.Api/MBank.Api.csproj" />
+  </Folder>
+</Solution>
