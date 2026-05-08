@@ -49,6 +49,9 @@ Detailed continuity notes for the active work session live here.
 - MCP validation passed on 2026-05-08: `get_task_context` returned relevant memories with RRF/vector/full-text-related relevance signals, `remember` stored a validation memory, `get` fetched it with source evidence, and a differently worded `get_task_context` retrieved the new memory as the top result.
 - Fixed a full-text query translation bug by inlining `EF.Functions.WebSearchToTsQuery(...)` inside the EF query instead of storing it in a local variable that forced client evaluation.
 - Fixed noisy context conflict detection so same-subject groups are compared within the group, not against every scored memory.
+- Branch `codex/retrieval-quality-tests` adds normal xUnit tests under `tests/MBank.Tests` using `WebApplicationFactory<Program>`, DI overrides for fake deterministic embeddings, and Testcontainers with the `pgvector/pgvector:pg16` image.
+- Retrieval quality tests cover top-result ranking, launch guidance retrieval, full-text signal visibility, warning/conflict scoping, cross-subject conflict suppression, and `get` source evidence.
+- Retrieval quality tests exposed that `WebSearchToTsQuery` over generated multi-field task text was too strict for candidate generation; full-text retrieval now builds an OR-style `ToTsQuery` from extracted terms.
 - Project knowledge was stored into MBank itself as atomic memories.
 - `AGENTS.md` now instructs future agents to call the configured `mbank` MCP server proactively.
 
@@ -66,6 +69,6 @@ Detailed continuity notes for the active work session live here.
 
 ## Next Steps
 
-- Consider adding automated integration coverage for the MCP memory loop and hybrid retrieval queries.
+- Consider adding MCP JSON-RPC endpoint-level tests later if direct HTTP contract coverage becomes important.
 - If Codex UI still fails to add the server, implement empty MCP resource and resource-template list handlers.
 - Consider adding a memory listing/admin capability later; currently memory count/listing requires direct database query.

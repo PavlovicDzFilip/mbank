@@ -102,29 +102,26 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             })
             .ToListAsync(cancellationToken);
 
-        var textCandidateRows = await db.Memories
-            .AsNoTracking()
-            .Where(x => x.Status == "active"
-                && x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", queryText)))
-            .OrderByDescending(x => x.SearchVector.Rank(
-                EF.Functions.WebSearchToTsQuery("english", queryText),
-                NpgsqlTsRankingNormalization.DivideByItselfPlusOne))
-            .Take(candidateLimit)
-            .Select(x => new
-            {
-                Memory = x,
-                Rank = x.SearchVector.Rank(
-                    EF.Functions.WebSearchToTsQuery("english", queryText),
-                    NpgsqlTsRankingNormalization.DivideByItselfPlusOne)
-            })
-            .ToListAsync(cancellationToken);
+        var fullTextQuery = BuildFullTextQuery(queryText);
+        IReadOnlyList<TextCandidate> textCandidates = fullTextQuery is null
+            ? []
+            : await db.Memories
+                .AsNoTracking()
+                .Where(x => x.Status == "active"
+                    && x.SearchVector.Matches(EF.Functions.ToTsQuery("english", fullTextQuery)))
+                .OrderByDescending(x => x.SearchVector.Rank(
+                    EF.Functions.ToTsQuery("english", fullTextQuery),
+                    NpgsqlTsRankingNormalization.DivideByItselfPlusOne))
+                .Take(candidateLimit)
+                .Select(x => new TextCandidate(
+                    x,
+                    x.SearchVector.Rank(
+                        EF.Functions.ToTsQuery("english", fullTextQuery),
+                        NpgsqlTsRankingNormalization.DivideByItselfPlusOne)))
+                .ToListAsync(cancellationToken);
 
         var vectorCandidates = vectorCandidateRows
             .Select(x => new VectorCandidate(x.Memory, x.Distance))
-            .ToArray();
-
-        var textCandidates = textCandidateRows
-            .Select(x => new TextCandidate(x.Memory, x.Rank))
             .ToArray();
 
         var queryTerms = ExtractTerms(queryText);
@@ -500,6 +497,29 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             .Where(x => x.Length >= 3)
             .Select(x => x.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string? BuildFullTextQuery(string text)
+    {
+        var terms = ExtractTerms(text)
+            .Select(NormalizeTsQueryTerm)
+            .Where(x => x is not null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(32)
+            .Select(x => $"{x}:*")
+            .ToArray();
+
+        return terms.Length == 0 ? null : string.Join(" | ", terms);
+    }
+
+    private static string? NormalizeTsQueryTerm(string term)
+    {
+        var normalized = new string(term
+            .Where(char.IsLetterOrDigit)
+            .Select(char.ToLowerInvariant)
+            .ToArray());
+
+        return normalized.Length < 3 ? null : normalized;
     }
 
     private static StoredMemory ToStoredMemory(MemoryEntry entry)

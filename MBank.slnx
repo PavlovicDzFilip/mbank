@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/MBank.Api/MBank.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MBank.Tests/MBank.Tests.csproj" />
+  </Folder>
 </Solution>
