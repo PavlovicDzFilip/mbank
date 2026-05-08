@@ -102,16 +102,20 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             })
             .ToListAsync(cancellationToken);
 
-        var ftsQuery = EF.Functions.WebSearchToTsQuery("english", queryText);
         var textCandidateRows = await db.Memories
             .AsNoTracking()
-            .Where(x => x.Status == "active" && x.SearchVector.Matches(ftsQuery))
-            .OrderByDescending(x => x.SearchVector.Rank(ftsQuery, NpgsqlTsRankingNormalization.DivideByItselfPlusOne))
+            .Where(x => x.Status == "active"
+                && x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", queryText)))
+            .OrderByDescending(x => x.SearchVector.Rank(
+                EF.Functions.WebSearchToTsQuery("english", queryText),
+                NpgsqlTsRankingNormalization.DivideByItselfPlusOne))
             .Take(candidateLimit)
             .Select(x => new
             {
                 Memory = x,
-                Rank = x.SearchVector.Rank(ftsQuery, NpgsqlTsRankingNormalization.DivideByItselfPlusOne)
+                Rank = x.SearchVector.Rank(
+                    EF.Functions.WebSearchToTsQuery("english", queryText),
+                    NpgsqlTsRankingNormalization.DivideByItselfPlusOne)
             })
             .ToListAsync(cancellationToken);
 
@@ -406,7 +410,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             .GroupBy(x => x.Memory.Subject, StringComparer.OrdinalIgnoreCase))
         {
             var conflictLinks = group
-                .SelectMany(x => scored, (left, right) => (Left: left.Memory, Right: right.Memory))
+                .SelectMany(x => group, (left, right) => (Left: left.Memory, Right: right.Memory))
                 .Where(x => x.Left.Id != x.Right.Id)
                 .Where(x => IsPotentialConflict(x.Left, x.Right))
                 .Take(3);

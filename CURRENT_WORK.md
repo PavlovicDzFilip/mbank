@@ -4,7 +4,7 @@ Detailed continuity notes for the active work session live here.
 
 ## Current Focus
 
-- End-of-day checkpoint after implementing the MVP MCP memory server focused on storage and retrieval.
+- Validation checkpoint after proving the MVP MCP memory loop works end to end.
 
 ## Decisions Made
 
@@ -41,9 +41,14 @@ Detailed continuity notes for the active work session live here.
 - User wants explicit OpenAI configuration via `OpenAI:ApiKey`; do not read `OPENAI_API_KEY` directly. Validate required configuration at startup, not when a tool is invoked.
 - Local `OpenAI:ApiKey` is configured via .NET user-secrets for `MBank.Api`; do not record the secret value in repo files or planning notes.
 - When more team members use the system, move secrets such as `OpenAI:ApiKey` to Azure Key Vault or an equivalent managed secret store.
+- When Codex runs the MBank project, it should start the app in a visible window so the user can see and control the running process.
+- When Codex runs `MBank.Api`, it must use `D:\MBank\src\MBank.Api` as the process working directory so appsettings and .NET user-secrets are applied correctly.
 - Scaffolded ASP.NET Core 10 app with MCP endpoint, EF Core entities, pgvector migration, Docker Compose Postgres, and OpenAI embeddings.
 - Docker Compose/Postgres/pgvector became available later in the session; migrations were applied successfully to the local database.
 - Retrieval has been updated to true hybrid retrieval: independent pgvector cosine candidates plus PostgreSQL full-text candidates over a generated `SearchVector`, merged with reciprocal rank fusion.
+- MCP validation passed on 2026-05-08: `get_task_context` returned relevant memories with RRF/vector/full-text-related relevance signals, `remember` stored a validation memory, `get` fetched it with source evidence, and a differently worded `get_task_context` retrieved the new memory as the top result.
+- Fixed a full-text query translation bug by inlining `EF.Functions.WebSearchToTsQuery(...)` inside the EF query instead of storing it in a local variable that forced client evaluation.
+- Fixed noisy context conflict detection so same-subject groups are compared within the group, not against every scored memory.
 - Project knowledge was stored into MBank itself as atomic memories.
 - `AGENTS.md` now instructs future agents to call the configured `mbank` MCP server proactively.
 
@@ -61,7 +66,6 @@ Detailed continuity notes for the active work session live here.
 
 ## Next Steps
 
-- Restart the MBank.Api process so the running server uses the latest hybrid retrieval DLL.
-- Test `get_task_context` through MCP after restart and verify that relevance reasons include RRF/vector/full-text signals.
+- Consider adding automated integration coverage for the MCP memory loop and hybrid retrieval queries.
 - If Codex UI still fails to add the server, implement empty MCP resource and resource-template list handlers.
 - Consider adding a memory listing/admin capability later; currently memory count/listing requires direct database query.
