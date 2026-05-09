@@ -36,3 +36,7 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Read this file before making code changes in this workspace.
 - Prefer small, focused edits that match the existing project style.
 - Do not revert user changes unless explicitly asked.
+
+## Proof Branch Note
+
+On branches named `codex/proof-*`, `CURRENT_WORK.md` and `PRODUCT_BOARD.md` may be intentionally absent to test whether project memory can provide continuity. Do not recreate them unless the user explicitly asks.
