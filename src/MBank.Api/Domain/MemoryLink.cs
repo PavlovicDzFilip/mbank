@@ -10,5 +10,7 @@ public sealed class MemoryLink
 
     public string Relation { get; set; } = "related";
 
+    public string? Description { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

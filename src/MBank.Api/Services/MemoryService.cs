@@ -184,11 +184,17 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
                 .FirstOrDefaultAsync(x => x.Id == memory.SourceRecordId, cancellationToken);
         }
 
-        var linkedIds = await db.MemoryLinks
+        var links = await db.MemoryLinks
             .AsNoTracking()
             .Where(x => x.FromMemoryId == id || x.ToMemoryId == id)
-            .Select(x => x.FromMemoryId == id ? x.ToMemoryId : x.FromMemoryId)
             .ToListAsync(cancellationToken);
+        var linkDetails = links
+            .Select(x => new MemoryLinkDetail(
+                x.FromMemoryId == id ? x.ToMemoryId : x.FromMemoryId,
+                x.Relation,
+                x.Description,
+                x.CreatedAt))
+            .ToArray();
 
         return new MemoryDetail(
             memory.Id,
@@ -207,7 +213,8 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
                     source.SourceUrl,
                     source.ConversationUrl,
                     source.MetadataJson),
-            linkedIds,
+            linkDetails.Select(x => x.MemoryId).ToArray(),
+            linkDetails,
             memory.CreatedAt,
             memory.UpdatedAt);
     }
@@ -229,34 +236,34 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             return new ReportConflictResponse(false, "At least two referenced memories must exist.");
         }
 
+        var description = NormalizeOptional(request.Description);
+
         for (var i = 0; i < memories.Count; i++)
         {
             for (var j = i + 1; j < memories.Count; j++)
             {
                 var from = memories[i].Id;
                 var to = memories[j].Id;
-                var exists = await db.MemoryLinks.AnyAsync(
+                var existing = await db.MemoryLinks.FirstOrDefaultAsync(
                     x => x.FromMemoryId == from && x.ToMemoryId == to && x.Relation == "conflicts",
                     cancellationToken);
 
-                if (!exists)
+                if (existing is null)
                 {
                     db.MemoryLinks.Add(new MemoryLink
                     {
                         FromMemoryId = from,
                         ToMemoryId = to,
-                        Relation = "conflicts"
+                        Relation = "conflicts",
+                        Description = description
                     });
+                }
+                else if (!string.IsNullOrWhiteSpace(description) && !TextEquals(existing.Description, description))
+                {
+                    existing.Description = description;
                 }
             }
         }
-
-        var source = new SourceRecord
-        {
-            SourceKind = "conflict_report",
-            SourceText = request.Description
-        };
-        db.SourceRecords.Add(source);
 
         await db.SaveChangesAsync(cancellationToken);
         return new ReportConflictResponse(true, "Conflict report recorded.");

@@ -61,6 +61,7 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
             entity.ToTable("memory_links");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Relation).HasMaxLength(64);
+            entity.Property(x => x.Description).HasMaxLength(2000);
             entity.HasIndex(x => new { x.FromMemoryId, x.ToMemoryId }).IsUnique();
             entity.HasOne<MemoryEntry>()
                 .WithMany()

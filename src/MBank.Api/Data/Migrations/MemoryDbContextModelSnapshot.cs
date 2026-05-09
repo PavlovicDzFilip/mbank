@@ -120,6 +120,10 @@ namespace MBank.Api.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<Guid>("FromMemoryId")
                         .HasColumnType("uuid");
 

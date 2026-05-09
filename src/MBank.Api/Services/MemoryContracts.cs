@@ -85,8 +85,15 @@ public sealed record MemoryDetail(
     string Status,
     SourceDetail? Source,
     IReadOnlyList<Guid> LinkedMemoryIds,
+    IReadOnlyList<MemoryLinkDetail> Links,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+public sealed record MemoryLinkDetail(
+    Guid MemoryId,
+    string Relation,
+    string? Description,
+    DateTimeOffset CreatedAt);
 
 public sealed record SourceDetail(
     string? SourceKind,
@@ -102,4 +109,3 @@ public sealed record ReportConflictRequest(
 public sealed record ReportConflictResponse(
     bool Recorded,
     string Message);
-
