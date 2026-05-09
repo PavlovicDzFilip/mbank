@@ -95,8 +95,11 @@ Shared planning board for what we want to achieve.
 - `remember` should accept multiple atomic memories in one call.
 - `remember` should instruct agents to provide source/raw context when available without bloating normal task context.
 - For v1, `remember` trusts the agent to send already-atomic memories; backend LLM extraction/splitting is a later revisit.
-- `get_task_context` should return relevant memories plus clarifying questions.
+- `get_task_context` should return strong and possible memory matches plus clarifying questions.
 - Light conflict detection is acceptable in v1 if cheap to implement.
+- `get_task_context` should distinguish strong query matches from possible query matches instead of returning all candidates as equally relevant context.
+- Query match responses should use clear names: `memoryConfidence` for stored-memory trust, `matchScore` for normalized query-match strength, `matchStrength` for the bucket, and `matchReason` for ranking evidence.
+- `matchScore` is bucket-normalized for agent readability, not a probability. Agents should reason primarily from `matchStrength`.
 
 ## Risks / Pushback
 

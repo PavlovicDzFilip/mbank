@@ -10,6 +10,9 @@ namespace MBank.Api.Services;
 public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddings) : IMemoryService
 {
     private const double RrfK = 60;
+    private const double PossibleMatchRawThreshold = 0.18;
+    private const double StrongMatchRawThreshold = 0.28;
+    private const double ExcellentMatchRawScore = 0.60;
 
     private static readonly HashSet<string> WarningTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -130,36 +133,38 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         var scored = fusedCandidates
             .Select(x => ScoreCandidate(x.Memory, x.RrfScore, x.VectorDistance, x.TextRank, request, queryTerms))
             .OrderByDescending(x => x.Score)
-            .Take(limit)
+            .Take(limit * 2)
             .ToList();
 
-        var warnings = scored
+        var strongMatches = scored
+            .Where(x => x.Score >= StrongMatchRawThreshold)
+            .Take(limit)
+            .ToArray();
+
+        var possibleMatches = scored
+            .Where(x => x.Score >= PossibleMatchRawThreshold && x.Score < StrongMatchRawThreshold)
+            .Take(limit)
+            .ToArray();
+
+        var warnings = strongMatches
             .Where(x => WarningTypes.Contains(x.Memory.Type))
             .Select(x => x.Memory.Summary)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        var conflicts = FindContextConflicts(scored);
-        var questions = BuildClarifyingQuestions(request, scored, conflicts);
+        var conflicts = FindContextConflicts(strongMatches);
+        var questions = BuildClarifyingQuestions(request, strongMatches, possibleMatches, conflicts);
 
-        var status = scored.Count == 0 ? "no_context_found" : "context_found";
-        var summary = scored.Count == 0
-            ? "No relevant memories were found for this task."
-            : $"Found {scored.Count} relevant memories for this task.";
+        var status = strongMatches.Length > 0
+            ? "context_found"
+            : possibleMatches.Length > 0 ? "possible_context_found" : "no_context_found";
+        var summary = BuildContextSummary(strongMatches.Length, possibleMatches.Length);
 
         return new TaskContextResponse(
             status,
             summary,
-            scored.Select(x => new RelevantMemory(
-                x.Memory.Id,
-                x.Memory.Type,
-                x.Memory.Summary,
-                x.Memory.Subject,
-                x.Memory.SubjectKind,
-                x.Memory.Tags,
-                x.Memory.Confidence,
-                Math.Round(x.Score, 4),
-                x.WhyRelevant)).ToArray(),
+            strongMatches.Select(ToMemoryMatch).ToArray(),
+            possibleMatches.Select(ToMemoryMatch).ToArray(),
             warnings,
             conflicts,
             questions);
@@ -405,6 +410,64 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         return new ScoredMemory(memory, score, string.Join(", ", reasons));
     }
 
+    private static MemoryMatch ToMemoryMatch(ScoredMemory scored)
+    {
+        var strength = scored.Score >= StrongMatchRawThreshold ? "strong" : "possible";
+
+        return new MemoryMatch(
+            scored.Memory.Id,
+            scored.Memory.Type,
+            scored.Memory.Summary,
+            scored.Memory.Subject,
+            scored.Memory.SubjectKind,
+            scored.Memory.Tags,
+            scored.Memory.Confidence,
+            NormalizeMatchScore(scored.Score),
+            strength,
+            scored.MatchReason);
+    }
+
+    private static double NormalizeMatchScore(double rawScore)
+    {
+        if (rawScore >= StrongMatchRawThreshold)
+        {
+            var strongRange = ExcellentMatchRawScore - StrongMatchRawThreshold;
+            var position = strongRange <= 0 ? 1 : (rawScore - StrongMatchRawThreshold) / strongRange;
+            return Math.Round(0.75 + Math.Clamp(position, 0, 1) * 0.25, 2);
+        }
+
+        if (rawScore >= PossibleMatchRawThreshold)
+        {
+            var possibleRange = StrongMatchRawThreshold - PossibleMatchRawThreshold;
+            var position = possibleRange <= 0 ? 1 : (rawScore - PossibleMatchRawThreshold) / possibleRange;
+            return Math.Round(0.40 + Math.Clamp(position, 0, 1) * 0.34, 2);
+        }
+
+        var omittedRange = PossibleMatchRawThreshold;
+        var omittedPosition = omittedRange <= 0 ? 0 : rawScore / omittedRange;
+        return Math.Round(Math.Clamp(omittedPosition, 0, 1) * 0.39, 2);
+    }
+
+    private static string BuildContextSummary(int strongMatchCount, int possibleMatchCount)
+    {
+        if (strongMatchCount == 0 && possibleMatchCount == 0)
+        {
+            return "No memory matches were found for this task.";
+        }
+
+        if (strongMatchCount == 0)
+        {
+            return $"Found {possibleMatchCount} possible memory matches for this task.";
+        }
+
+        if (possibleMatchCount == 0)
+        {
+            return $"Found {strongMatchCount} strong memory matches for this task.";
+        }
+
+        return $"Found {strongMatchCount} strong memory matches and {possibleMatchCount} possible memory matches for this task.";
+    }
+
     private static IReadOnlyList<PossibleConflict> FindContextConflicts(IReadOnlyList<ScoredMemory> scored)
     {
         var conflicts = new List<PossibleConflict>();
@@ -439,7 +502,8 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
 
     private static IReadOnlyList<string> BuildClarifyingQuestions(
         TaskContextRequest request,
-        IReadOnlyList<ScoredMemory> scored,
+        IReadOnlyList<ScoredMemory> strongMatches,
+        IReadOnlyList<ScoredMemory> possibleMatches,
         IReadOnlyList<PossibleConflict> conflicts)
     {
         var questions = new List<string>();
@@ -449,9 +513,14 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             questions.Add("What product capability or technical area is this task primarily about?");
         }
 
-        if (scored.Count == 0)
+        if (strongMatches.Count == 0 && possibleMatches.Count == 0)
         {
             questions.Add("Is there any product rationale, technical convention, or constraint that should guide this task?");
+        }
+
+        if (strongMatches.Count == 0 && possibleMatches.Count > 0)
+        {
+            questions.Add("Only possible memory matches were found. Should any of them guide this task?");
         }
 
         if (conflicts.Count > 0)
@@ -646,5 +715,5 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         }
     }
 
-    private sealed record ScoredMemory(MemoryEntry Memory, double Score, string WhyRelevant);
+    private sealed record ScoredMemory(MemoryEntry Memory, double Score, string MatchReason);
 }

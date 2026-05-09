@@ -47,6 +47,6 @@ The default launch profile uses `http://localhost:5221`. The root endpoint retur
 ## MCP Tools
 
 - `Remember`: stores durable product or implementation guidance as one or more atomic memories.
-- `GetTaskContext`: retrieves relevant memories for a structured task before planning or implementation.
+- `GetTaskContext`: retrieves strong and possible memory matches for a structured task before planning or implementation.
 - `Get`: fetches one memory with source evidence and linked memories.
 - `ReportConflict`: records that memories appear to conflict and should be clarified later.

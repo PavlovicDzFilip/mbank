@@ -58,21 +58,23 @@ public sealed record WorkArea(
 public sealed record TaskContextResponse(
     string Status,
     string Summary,
-    IReadOnlyList<RelevantMemory> RelevantMemories,
+    IReadOnlyList<MemoryMatch> StrongMatches,
+    IReadOnlyList<MemoryMatch> PossibleMatches,
     IReadOnlyList<string> Warnings,
     IReadOnlyList<PossibleConflict> Conflicts,
     IReadOnlyList<string> ClarifyingQuestions);
 
-public sealed record RelevantMemory(
+public sealed record MemoryMatch(
     Guid Id,
     string Type,
     string Summary,
     string? Subject,
     string? SubjectKind,
     IReadOnlyList<string> Tags,
-    double Confidence,
-    double RelevanceScore,
-    string WhyRelevant);
+    double MemoryConfidence,
+    double MatchScore,
+    string MatchStrength,
+    string MatchReason);
 
 public sealed record MemoryDetail(
     Guid Id,

@@ -101,13 +101,18 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         var contextContent = GetStructuredContent(context);
         Assert.Equal("context_found", contextContent["status"]!.GetValue<string>());
 
-        var relevant = contextContent["relevantMemories"]!.AsArray();
-        Assert.Contains(relevant, x => x!["id"]!.GetValue<Guid>() == decisionId);
-        Assert.Contains(relevant, x => x!["id"]!.GetValue<Guid>() == warningId);
-        Assert.Contains(relevant, x =>
+        var strongMatches = contextContent["strongMatches"]!.AsArray();
+        Assert.Contains(strongMatches, x => x!["id"]!.GetValue<Guid>() == decisionId);
+        Assert.Contains(strongMatches, x => x!["id"]!.GetValue<Guid>() == warningId);
+        Assert.Contains(strongMatches, x =>
             x!["id"]!.GetValue<Guid>() == decisionId
-            && x["whyRelevant"]!.GetValue<string>().Contains("subject match", StringComparison.OrdinalIgnoreCase)
-            && x["whyRelevant"]!.GetValue<string>().Contains("vector similarity", StringComparison.OrdinalIgnoreCase));
+            && x["memoryConfidence"]!.GetValue<double>() > 0.9
+            && x["matchStrength"]!.GetValue<string>() == "strong"
+            && x["matchScore"]!.GetValue<double>() >= 0.75
+            && x["matchReason"]!.GetValue<string>().Contains("subject match", StringComparison.OrdinalIgnoreCase)
+            && x["matchReason"]!.GetValue<string>().Contains("vector similarity", StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(contextContent["possibleMatches"]);
+        Assert.Null(contextContent["relevantMemories"]);
 
         var warnings = contextContent["warnings"]!.AsArray();
         Assert.Contains(warnings, x =>

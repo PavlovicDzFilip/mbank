@@ -18,7 +18,7 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = true)]
-    [Description("Get relevant memories before planning or implementing a task. Send structured task data: title, description, kind, and optional work area such as subject, files, or modules. This tool performs retrieval; do not use keyword-search behavior manually.")]
+    [Description("Get memory matches before planning or implementing a task. Strong matches may guide work; possible matches are hints to confirm before relying on them. Send structured task data: title, description, kind, and optional work area such as subject, files, or modules. This tool performs retrieval; do not use keyword-search behavior manually.")]
     public static Task<TaskContextResponse> GetTaskContext(
         IMemoryService memoryService,
         [Description("Structured description of the task and optional work area.")] TaskContextRequest request,
@@ -47,4 +47,3 @@ public static class MemoryTools
         return memoryService.ReportConflictAsync(request, cancellationToken);
     }
 }
-

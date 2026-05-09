@@ -44,11 +44,13 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             Limit: 4), CancellationToken.None);
 
         Assert.Equal("context_found", response.Status);
-        Assert.NotEmpty(response.RelevantMemories);
-        Assert.Contains("MVP focuses on MCP storage and retrieval", response.RelevantMemories[0].Summary);
-        Assert.DoesNotContain(response.RelevantMemories.Take(2), x => x.Subject == "Enterprise billing");
-        Assert.Contains("subject match", response.RelevantMemories[0].WhyRelevant);
-        Assert.Contains("vector similarity", response.RelevantMemories[0].WhyRelevant);
+        Assert.NotEmpty(response.StrongMatches);
+        Assert.Contains("MVP focuses on MCP storage and retrieval", response.StrongMatches[0].Summary);
+        Assert.DoesNotContain(response.StrongMatches.Take(2), x => x.Subject == "Enterprise billing");
+        Assert.Equal("strong", response.StrongMatches[0].MatchStrength);
+        Assert.InRange(response.StrongMatches[0].MatchScore, 0.75, 1);
+        Assert.Contains("subject match", response.StrongMatches[0].MatchReason);
+        Assert.Contains("vector similarity", response.StrongMatches[0].MatchReason);
     }
 
     [Fact]
@@ -66,9 +68,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             new WorkArea("MBank.Api launch", "technical-area", Modules: ["MBank.Api"]),
             Limit: 3), CancellationToken.None);
 
-        Assert.NotEmpty(response.RelevantMemories);
-        Assert.Contains("working directory", response.RelevantMemories[0].Summary);
-        Assert.Contains("user-secrets", response.RelevantMemories[0].Summary);
+        Assert.NotEmpty(response.StrongMatches);
+        Assert.Contains("working directory", response.StrongMatches[0].Summary);
+        Assert.Contains("user-secrets", response.StrongMatches[0].Summary);
         Assert.Empty(response.Conflicts);
         Assert.Empty(response.ClarifyingQuestions);
     }
@@ -110,10 +112,10 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             new WorkArea("Hybrid retrieval", "technical-area"),
             Limit: 2), CancellationToken.None);
 
-        Assert.NotEmpty(response.RelevantMemories);
-        Assert.Contains("apricotvector", response.RelevantMemories[0].Summary);
-        Assert.Contains("RRF", response.RelevantMemories[0].WhyRelevant);
-        Assert.Contains("full-text rank", response.RelevantMemories[0].WhyRelevant);
+        Assert.NotEmpty(response.StrongMatches);
+        Assert.Contains("apricotvector", response.StrongMatches[0].Summary);
+        Assert.Contains("RRF", response.StrongMatches[0].MatchReason);
+        Assert.Contains("full-text rank", response.StrongMatches[0].MatchReason);
     }
 
     [Fact]
@@ -136,8 +138,8 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.Contains(response.ClarifyingQuestions, x => x.Contains("conflicting memories", StringComparison.OrdinalIgnoreCase));
         Assert.All(response.Conflicts, conflict =>
         {
-            var existing = response.RelevantMemories.Single(x => x.Id == conflict.ExistingMemoryId);
-            var current = response.RelevantMemories.Single(x => x.Id == conflict.NewMemoryId);
+            var existing = response.StrongMatches.Single(x => x.Id == conflict.ExistingMemoryId);
+            var current = response.StrongMatches.Single(x => x.Id == conflict.NewMemoryId);
             Assert.Equal(existing.Subject, current.Subject);
         });
     }
@@ -157,9 +159,43 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             new WorkArea("MCP retrieval validation", "technical-area", Modules: ["MBank.Api", "MCP"]),
             Limit: 5), CancellationToken.None);
 
-        Assert.True(response.RelevantMemories.Select(x => x.Subject).Distinct().Count() > 1);
+        Assert.True(response.StrongMatches.Select(x => x.Subject).Distinct().Count() > 1);
         Assert.Empty(response.Conflicts);
         Assert.DoesNotContain(response.ClarifyingQuestions, x => x.Contains("conflicting memories", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task GetTaskContext_returns_possible_matches_separately_with_bucketed_scores()
+    {
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
+        await service.RememberAsync(new RememberRequest(
+            [
+                new MemoryDraft(
+                    "decision",
+                    "Generic search is not a core v1 MCP workflow unless a clear manual or debug use case appears later.",
+                    "MCP tool surface",
+                    "technical_area",
+                    ["mcp", "tools", "search"],
+                    0.98)
+            ]),
+            CancellationToken.None);
+
+        var response = await service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Review search behavior",
+                "Should the product expose search?",
+                "product-planning"),
+            Limit: 2), CancellationToken.None);
+
+        Assert.Equal("possible_context_found", response.Status);
+        Assert.Empty(response.StrongMatches);
+        var possible = Assert.Single(response.PossibleMatches);
+        Assert.Equal("possible", possible.MatchStrength);
+        Assert.Equal(0.98, possible.MemoryConfidence);
+        Assert.InRange(possible.MatchScore, 0.40, 0.74);
+        Assert.Contains("vector similarity", possible.MatchReason);
+        Assert.Contains(response.ClarifyingQuestions, x => x.Contains("Only possible memory matches", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

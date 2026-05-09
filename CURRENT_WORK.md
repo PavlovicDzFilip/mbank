@@ -54,6 +54,9 @@ Detailed continuity notes for the active work session live here.
 - Retrieval quality tests exposed that `WebSearchToTsQuery` over generated multi-field task text was too strict for candidate generation; full-text retrieval now builds an OR-style `ToTsQuery` from extracted terms.
 - Project knowledge was stored into MBank itself as atomic memories.
 - `AGENTS.md` now instructs future agents to call the configured `mbank` MCP server proactively.
+- `get_task_context` now returns `strongMatches` and `possibleMatches` instead of `relevantMemories`.
+- Query match items now expose `memoryConfidence`, normalized bucketed `matchScore`, `matchStrength`, and `matchReason` so agents do not confuse stored-memory trust with query-match strength.
+- Match score normalization uses product buckets: possible matches map into a lower normalized range and strong matches map into the upper normalized range; the normalized value is not a probability.
 
 ## Open Questions
 
@@ -72,3 +75,4 @@ Detailed continuity notes for the active work session live here.
 - Consider adding MCP JSON-RPC endpoint-level tests later if direct HTTP contract coverage becomes important.
 - If Codex UI still fails to add the server, implement empty MCP resource and resource-template list handlers.
 - Consider adding a memory listing/admin capability later; currently memory count/listing requires direct database query.
+- Calibrate the `possible` and `strong` raw-score thresholds after collecting more real retrieval examples.
