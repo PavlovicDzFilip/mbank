@@ -5,6 +5,8 @@ Detailed continuity notes for the active work session live here.
 ## Current Focus
 
 - Validation checkpoint after proving the MVP MCP memory loop works end to end.
+- 2026-05-10 readiness check: Debug build passed, Debug test suite passed, Release test suite passed, and the git worktree was clean afterward.
+- 2026-05-10 local deployment: latest Release publish was copied to `MBank-local\app`, local database migrations were already up to date, Docker containers `mbank-local-api-1` and `mbank-local-postgres-1` were running, root endpoint returned running status, `/mcp` advertised `remember`, `get_task_context`, `get`, and `report_conflict`, and `MBank-local\.env` had `OPENAI_API_KEY` set.
 
 ## Decisions Made
 
@@ -51,6 +53,7 @@ Detailed continuity notes for the active work session live here.
 - Fixed noisy context conflict detection so same-subject groups are compared within the group, not against every scored memory.
 - Branch `codex/retrieval-quality-tests` adds normal xUnit tests under `tests/MBank.Tests` using `WebApplicationFactory<Program>`, DI overrides for fake deterministic embeddings, and Testcontainers with the `pgvector/pgvector:pg16` image.
 - Retrieval quality tests cover top-result ranking, launch guidance retrieval, full-text signal visibility, warning/conflict scoping, cross-subject conflict suppression, and `get` source evidence.
+- Readiness judgment on 2026-05-10: the MCP-first MVP behavior is proven well enough to move to the next phase, provided "next phase" does not mean enterprise/team/company scope yet.
 - Retrieval quality tests exposed that `WebSearchToTsQuery` over generated multi-field task text was too strict for candidate generation; full-text retrieval now builds an OR-style `ToTsQuery` from extracted terms.
 - Project knowledge was stored into MBank itself as atomic memories.
 - `AGENTS.md` now instructs future agents to call the configured `mbank` MCP server proactively.
@@ -76,3 +79,5 @@ Detailed continuity notes for the active work session live here.
 - If Codex UI still fails to add the server, implement empty MCP resource and resource-template list handlers.
 - Consider adding a memory listing/admin capability later; currently memory count/listing requires direct database query.
 - Calibrate the `possible` and `strong` raw-score thresholds after collecting more real retrieval examples.
+- Next recommended phase: add the smallest operator-facing visibility surface, likely a simple Razor Pages memory list/detail view, while keeping MCP storage and retrieval as the product core.
+- Before choosing the next build phase, dogfood MBank through real single-user workflows: cross-session recall, correction/staleness, duplicate/noise behavior, and agent compliance with retrieve-before-plan/store-durable-guidance habits.

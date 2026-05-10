@@ -49,6 +49,8 @@ Shared planning board for what we want to achieve.
 
 - Define the first demo workflow around a product task becoming implementation work.
 - Focus MVP on storage and retrieval quality through MCP.
+- 2026-05-10 checkpoint: MCP storage/retrieval behavior is validated by passing Debug and Release test suites; next phase can start if it stays focused on making the proven loop easier to inspect and operate.
+- 2026-05-10 local deployment checkpoint: latest build is running in the durable local Docker environment at `http://localhost:5222/mcp`.
 - Decide what a "memory" is and what metadata it requires.
 - Decide how agents should know when to store versus retrieve memory.
 - Decide how to make MCP tool usage reliable enough across Codex, Claude Code, and Cursor.
@@ -120,3 +122,9 @@ Shared planning board for what we want to achieve.
 - The agent retrieves relevant product and technical memories.
 - The agent asks clarifying questions when context is missing or conflicting.
 - The agent stores the new information and proceeds toward implementation after approval.
+
+## Next Phase Candidate
+
+- Add a minimal Razor Pages operator surface for memory visibility: list memories, inspect one memory with source evidence and links, and possibly inspect conflicts.
+- Avoid broad dashboard, auth, billing, team management, and enterprise controls until the personal MCP workflow has more real-world use.
+- Alternative next phase: run targeted single-user dogfood experiments before building UI, especially around multi-session recall, memory correction, stale guidance, duplicate handling, and agent tool-use reliability.
