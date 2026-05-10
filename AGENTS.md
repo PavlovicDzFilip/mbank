@@ -16,11 +16,11 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Challenge vague goals, weak assumptions, unnecessary complexity, risky tradeoffs, and product decisions that do not clearly serve the user outcome.
 - Distinguish between understanding an idea and endorsing it.
 
-## Continuity Files
+## Continuity
 
-- Maintain `CURRENT_WORK.md` with a detailed description of the current work, decisions made, open questions, constraints, and next steps so the session can continue later.
-- Maintain `PRODUCT_BOARD.md` as the product planning board for goals, planned outcomes, scope, priorities, and agreed direction.
-- `CURRENT_WORK.md` and `PRODUCT_BOARD.md` are living planning and continuity files; update them whenever useful without needing separate permission.
+- Use MBank memory as the source of continuity for current work, product direction, decisions, open questions, constraints, and next steps.
+- Do not recreate `CURRENT_WORK.md` or `PRODUCT_BOARD.md` unless the user explicitly asks for those files.
+- When durable continuity changes, store it through the configured `mbank` MCP server instead of writing planning notes to local continuity files.
 
 ## MBank Memory
 
@@ -37,6 +37,6 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Prefer small, focused edits that match the existing project style.
 - Do not revert user changes unless explicitly asked.
 
-## Proof Branch Note
+## Removed Continuity Files
 
-On branches named `codex/proof-*`, `CURRENT_WORK.md` and `PRODUCT_BOARD.md` may be intentionally absent to test whether project memory can provide continuity. Do not recreate them unless the user explicitly asks.
+`CURRENT_WORK.md` and `PRODUCT_BOARD.md` were intentionally removed after their contents were archived into MBank memory. Their absence is expected on all branches. Do not recreate them unless the user explicitly asks.
