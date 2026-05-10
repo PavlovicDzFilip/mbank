@@ -109,9 +109,12 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             x!["id"]!.GetValue<Guid>() == decisionId
             && x["memoryConfidence"]!.GetValue<double>() > 0.9
             && x["matchStrength"]!.GetValue<string>() == "strong"
-            && x["matchScore"]!.GetValue<double>() >= 0.75
-            && x["matchReason"]!.GetValue<string>().Contains("subject match", StringComparison.OrdinalIgnoreCase)
-            && x["matchReason"]!.GetValue<string>().Contains("vector similarity", StringComparison.OrdinalIgnoreCase));
+            && x["matchScore"]!.GetValue<double>() >= 0.75);
+        Assert.All(strongMatches, x =>
+        {
+            Assert.False(x!.AsObject().ContainsKey("matchReason"));
+            Assert.False(x.AsObject().ContainsKey("whyRelevant"));
+        });
         Assert.NotNull(contextContent["possibleMatches"]);
         Assert.NotNull(contextContent["onboarding"]);
         Assert.True(contextContent["onboarding"]!["requiresExplicitApproval"]!.GetValue<bool>());

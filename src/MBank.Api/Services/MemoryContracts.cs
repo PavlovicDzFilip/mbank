@@ -74,8 +74,7 @@ public sealed record MemoryMatch(
     IReadOnlyList<string> Tags,
     double MemoryConfidence,
     double MatchScore,
-    string MatchStrength,
-    string MatchReason);
+    string MatchStrength);
 
 public sealed record MemoryDetail(
     Guid Id,
@@ -130,3 +129,7 @@ public sealed record AgentInstructionFileStatus(
     string? InstalledVersion,
     string LatestVersion,
     string Message);
+
+public sealed record AgentInstructionBlock(
+    string Version,
+    string Content);

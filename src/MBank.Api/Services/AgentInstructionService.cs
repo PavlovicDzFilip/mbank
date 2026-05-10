@@ -6,6 +6,8 @@ namespace MBank.Api.Services;
 public interface IAgentInstructionService
 {
     OnboardingStatusResponse CheckOnboarding();
+
+    AgentInstructionBlock GetInstructionBlock();
 }
 
 public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration) : IAgentInstructionService
@@ -61,6 +63,13 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
             files,
             warnings,
             BuildRecommendedAction(status));
+    }
+
+    public AgentInstructionBlock GetInstructionBlock()
+    {
+        return new AgentInstructionBlock(
+            LatestInstructionVersion,
+            CanonicalInstructionBlock);
     }
 
     private string ResolveRoot()

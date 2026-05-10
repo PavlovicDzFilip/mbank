@@ -361,31 +361,26 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         HashSet<string> queryTerms)
     {
         var score = rrfScore;
-        var reasons = new List<string> { $"RRF {rrfScore:0.0000}" };
 
         if (vectorDistance is not null)
         {
             var similarity = SimilarityFromCosineDistance(vectorDistance.Value);
             score += similarity * 0.12;
-            reasons.Add($"vector similarity {similarity:0.00}");
         }
 
         if (textRank is not null)
         {
             score += Math.Min(textRank.Value, 1) * 0.08;
-            reasons.Add($"full-text rank {textRank:0.00}");
         }
 
         if (TextEquals(memory.Subject, request.WorkArea?.Subject))
         {
             score += 0.15;
-            reasons.Add("subject match");
         }
 
         if (TextEquals(memory.SubjectKind, request.WorkArea?.SubjectKind))
         {
             score += 0.08;
-            reasons.Add("subject kind match");
         }
 
         var metadataTerms = new HashSet<string>(
@@ -396,19 +391,17 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         if (metadataMatches > 0)
         {
             score += Math.Min(metadataMatches * 0.03, 0.12);
-            reasons.Add("metadata match");
         }
 
         var textMatches = queryTerms.Count(x => memory.SearchText.Contains(x, StringComparison.OrdinalIgnoreCase));
         if (textMatches > 0)
         {
             score += Math.Min(textMatches * 0.01, 0.08);
-            reasons.Add("keyword match");
         }
 
         score += memory.Confidence * 0.07;
 
-        return new ScoredMemory(memory, score, string.Join(", ", reasons));
+        return new ScoredMemory(memory, score);
     }
 
     private static MemoryMatch ToMemoryMatch(ScoredMemory scored)
@@ -424,8 +417,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             scored.Memory.Tags,
             scored.Memory.Confidence,
             NormalizeMatchScore(scored.Score),
-            strength,
-            scored.MatchReason);
+            strength);
     }
 
     private static double NormalizeMatchScore(double rawScore)
@@ -716,5 +708,5 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         }
     }
 
-    private sealed record ScoredMemory(MemoryEntry Memory, double Score, string MatchReason);
+    private sealed record ScoredMemory(MemoryEntry Memory, double Score);
 }

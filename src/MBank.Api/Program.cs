@@ -46,6 +46,12 @@ app.MapGet("/", () => Results.Ok(new
     mcp = "/mcp"
 }));
 
+app.MapGet("/onboarding/agent-instructions", (IAgentInstructionService agentInstructions) =>
+{
+    var block = agentInstructions.GetInstructionBlock();
+    return Results.Text(block.Content, "text/markdown");
+});
+
 app.MapMcp("/mcp");
 
 app.Run();

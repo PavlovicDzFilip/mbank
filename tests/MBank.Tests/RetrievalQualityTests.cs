@@ -29,6 +29,20 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task Onboarding_endpoint_returns_canonical_agent_instruction_block()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/onboarding/agent-instructions");
+        var block = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<!-- mbank:start version=\"1.0.0\" -->", block);
+        Assert.Contains("## MBank Memory", block);
+        Assert.Contains("get_task_context", block);
+    }
+
+    [Fact]
     public async Task GetTaskContext_ranks_mvp_scope_guidance_above_noisy_matches()
     {
         using var scope = factory.Services.CreateScope();
@@ -49,8 +63,6 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.DoesNotContain(response.StrongMatches.Take(2), x => x.Subject == "Enterprise billing");
         Assert.Equal("strong", response.StrongMatches[0].MatchStrength);
         Assert.InRange(response.StrongMatches[0].MatchScore, 0.75, 1);
-        Assert.Contains("subject match", response.StrongMatches[0].MatchReason);
-        Assert.Contains("vector similarity", response.StrongMatches[0].MatchReason);
     }
 
     [Fact]
@@ -76,7 +88,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task GetTaskContext_includes_full_text_candidates_in_relevance_reasons()
+    public async Task GetTaskContext_includes_full_text_candidates_in_ranked_matches()
     {
         using var scope = factory.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
@@ -114,8 +126,6 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
 
         Assert.NotEmpty(response.StrongMatches);
         Assert.Contains("apricotvector", response.StrongMatches[0].Summary);
-        Assert.Contains("RRF", response.StrongMatches[0].MatchReason);
-        Assert.Contains("full-text rank", response.StrongMatches[0].MatchReason);
     }
 
     [Fact]
@@ -194,7 +204,6 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.Equal("possible", possible.MatchStrength);
         Assert.Equal(0.98, possible.MemoryConfidence);
         Assert.InRange(possible.MatchScore, 0.40, 0.74);
-        Assert.Contains("vector similarity", possible.MatchReason);
         Assert.Contains(response.ClarifyingQuestions, x => x.Contains("Only possible memory matches", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -261,7 +270,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 0.98),
             new(
                 "validation_result",
-                "MBank MCP get_task_context was validated end to end with hybrid retrieval, RRF relevance reasons, and no noisy cross-subject conflicts.",
+                "MBank MCP get_task_context was validated end to end with hybrid retrieval, ranked matches, and no noisy cross-subject conflicts.",
                 "MCP retrieval validation",
                 "technical-area",
                 ["mcp", "validation", "hybrid-retrieval", "rrf"],

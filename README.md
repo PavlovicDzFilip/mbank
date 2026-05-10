@@ -56,9 +56,11 @@ The default launch profile uses `http://localhost:5221`. The root endpoint retur
 
 Adding the MCP server makes MBank available to an agent. For reliable behavior, each repo should also include a small MBank instruction block in the agent instruction file.
 
+The bootstrap scripts fetch the canonical instruction block from a running MBank server. They do not carry a fallback copy of the instructions. If MBank is not running, bootstrap fails instead of writing stale guidance. The server does not know about Codex, Claude, Cursor, or file placement; the scripts handle that mapping locally.
+
 The bootstrap scripts only add or update content between `<!-- mbank:start ... -->` and `<!-- mbank:end -->`. They prompt before changing files by default.
 
-When the MBank instruction text changes, bump the block version everywhere it is defined so agents can detect stale repo instructions.
+When the MBank instruction text changes, bump the canonical block version in the server so agents can detect stale repo instructions.
 
 Placeholder public URL:
 
@@ -82,6 +84,16 @@ Local development usage:
 
 ```bash
 sh scripts/bootstrap-agent.sh --client codex
+```
+
+If MBank is running somewhere other than `http://localhost:5221`, pass the server URL:
+
+```powershell
+.\scripts\bootstrap-agent.ps1 -Client codex -ServerUrl http://localhost:5222
+```
+
+```bash
+sh scripts/bootstrap-agent.sh --client codex --server-url http://localhost:5222
 ```
 
 Supported clients:

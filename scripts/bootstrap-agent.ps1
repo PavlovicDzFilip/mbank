@@ -2,44 +2,51 @@ param(
     [ValidateSet("codex", "claude", "cursor", "all")]
     [string] $Client = "codex",
 
+    [string] $ServerUrl = "http://localhost:5221",
+
     [switch] $Yes
 )
 
 $ErrorActionPreference = "Stop"
 
-# Bump this version whenever the MBank instruction block changes.
-$Version = "1.0.0"
-$Block = @"
-<!-- mbank:start version="$Version" -->
-## MBank Memory
-
-Use the configured ``mbank`` MCP server proactively for durable project memory.
-
-At the start of a new product, planning, implementation, debugging, or review task, call ``get_task_context`` with a structured task description before proposing a plan or making changes.
-
-Use ``remember`` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
-
-Use ``get`` to inspect full memory details when a retrieved memory needs source context.
-
-Use ``report_conflict`` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.
-
-Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
-
-If MBank reports that this instruction block is missing or outdated, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
-<!-- mbank:end -->
-"@
-
 function Get-Targets {
     switch ($Client) {
-        "codex" { @("AGENTS.md") }
-        "claude" { @("CLAUDE.md") }
-        "cursor" { @(".cursor/rules/mbank.mdc") }
-        "all" { @("AGENTS.md", "CLAUDE.md", ".cursor/rules/mbank.mdc") }
+        "codex" { @([pscustomobject]@{ Target = "codex"; Path = "AGENTS.md" }) }
+        "claude" { @([pscustomobject]@{ Target = "claude"; Path = "CLAUDE.md" }) }
+        "cursor" { @([pscustomobject]@{ Target = "cursor"; Path = ".cursor/rules/mbank.mdc" }) }
+        "all" {
+            @(
+                [pscustomobject]@{ Target = "codex"; Path = "AGENTS.md" },
+                [pscustomobject]@{ Target = "claude"; Path = "CLAUDE.md" },
+                [pscustomobject]@{ Target = "cursor"; Path = ".cursor/rules/mbank.mdc" }
+            )
+        }
     }
 }
 
+function Get-MBankInstructionBlock {
+    $baseUrl = $ServerUrl.TrimEnd("/")
+    $uri = "$baseUrl/onboarding/agent-instructions"
+
+    try {
+        $block = Invoke-RestMethod -Uri $uri -Method Get
+    }
+    catch {
+        throw "Failed to fetch MBank instructions from $uri. Start MBank or pass -ServerUrl with the running MBank server URL."
+    }
+
+    if (-not ($block -is [string]) -or -not ($block.Contains("<!-- mbank:start"))) {
+        throw "MBank server returned an invalid instruction block."
+    }
+
+    return $block
+}
+
 function Set-MBankBlock {
-    param([string] $Path)
+    param(
+        [string] $Path,
+        [string] $Block
+    )
 
     $directory = Split-Path -Parent $Path
     if ($directory) {
@@ -67,12 +74,16 @@ $targets = Get-Targets
 
 Write-Host "MBank agent instruction bootstrap"
 Write-Host ""
+Write-Host "Fetching canonical instruction block from: $($ServerUrl.TrimEnd('/'))"
+Write-Host ""
+
+$block = Get-MBankInstructionBlock
+
 Write-Host "This will add or update the versioned MBank block in:"
 foreach ($target in $targets) {
-    Write-Host "- $target"
+    Write-Host "- $($target.Path)"
 }
 Write-Host ""
-Write-Host "Version: $Version"
 Write-Host "Repo: $(Get-Location)"
 Write-Host ""
 
@@ -85,9 +96,9 @@ if (-not $Yes) {
 }
 
 foreach ($target in $targets) {
-    Set-MBankBlock -Path $target
-    Write-Host "Updated $target"
+    Set-MBankBlock -Path $target.Path -Block $block
+    Write-Host "Updated $($target.Path)"
 }
 
 Write-Host ""
-Write-Host "Done. The MBank block is version $Version."
+Write-Host "Done. The MBank block was fetched from $($ServerUrl.TrimEnd('/'))."
