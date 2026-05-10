@@ -1,0 +1,100 @@
+using System.IO;
+using MBank.Api.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
+
+namespace MBank.Tests;
+
+public sealed class AgentInstructionServiceTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "mbank-agent-instructions", Guid.NewGuid().ToString("N"));
+
+    public AgentInstructionServiceTests()
+    {
+        Directory.CreateDirectory(_root);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_root))
+        {
+            Directory.Delete(_root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CheckOnboarding_reports_current_versioned_block()
+    {
+        File.WriteAllText(Path.Combine(_root, "AGENTS.md"), AgentInstructionService.CanonicalInstructionBlock);
+        var service = CreateService();
+
+        var status = service.CheckOnboarding();
+
+        Assert.Equal("current", status.Status);
+        Assert.Empty(status.Warnings);
+        var codex = status.Files.Single(x => x.Target == "codex");
+        Assert.Equal("current", codex.Status);
+        Assert.Equal(AgentInstructionService.LatestInstructionVersion, codex.InstalledVersion);
+        Assert.True(status.RequiresExplicitApproval);
+    }
+
+    [Fact]
+    public void CheckOnboarding_reports_outdated_versioned_block()
+    {
+        var oldBlock = AgentInstructionService.CanonicalInstructionBlock.Replace(
+            $"version=\"{AgentInstructionService.LatestInstructionVersion}\"",
+            "version=\"0.9.0\"",
+            StringComparison.Ordinal);
+        File.WriteAllText(Path.Combine(_root, "AGENTS.md"), oldBlock);
+        var service = CreateService();
+
+        var status = service.CheckOnboarding();
+
+        Assert.Equal("outdated", status.Status);
+        Assert.Contains(status.Warnings, x => x.Contains("outdated", StringComparison.OrdinalIgnoreCase));
+        var codex = status.Files.Single(x => x.Target == "codex");
+        Assert.Equal("outdated", codex.Status);
+        Assert.Equal("0.9.0", codex.InstalledVersion);
+        Assert.Contains("explicit approval", status.RecommendedAction, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CheckOnboarding_reports_missing_block_without_file_mutation()
+    {
+        var agentsPath = Path.Combine(_root, "AGENTS.md");
+        File.WriteAllText(agentsPath, "# AGENTS.md\n\nExisting repo instructions.\n");
+        var before = File.ReadAllText(agentsPath);
+        var service = CreateService();
+
+        var status = service.CheckOnboarding();
+
+        Assert.Equal("missing", status.Status);
+        Assert.Contains(status.Warnings, x => x.Contains("missing", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("block_missing", status.Files.Single(x => x.Target == "codex").Status);
+        Assert.Equal(before, File.ReadAllText(agentsPath));
+    }
+
+    private AgentInstructionService CreateService()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["MBank:AgentInstructionsRoot"] = _root
+            })
+            .Build();
+
+        return new AgentInstructionService(new TestHostEnvironment(_root), configuration);
+    }
+
+    private sealed class TestHostEnvironment(string contentRootPath) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Development;
+
+        public string ApplicationName { get; set; } = "MBank.Tests";
+
+        public string ContentRootPath { get; set; } = contentRootPath;
+
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+}

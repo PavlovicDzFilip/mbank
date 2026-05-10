@@ -60,6 +60,7 @@ public sealed record TaskContextResponse(
     string Summary,
     IReadOnlyList<MemoryMatch> StrongMatches,
     IReadOnlyList<MemoryMatch> PossibleMatches,
+    OnboardingStatusResponse Onboarding,
     IReadOnlyList<string> Warnings,
     IReadOnlyList<PossibleConflict> Conflicts,
     IReadOnlyList<string> ClarifyingQuestions);
@@ -110,4 +111,22 @@ public sealed record ReportConflictRequest(
 
 public sealed record ReportConflictResponse(
     bool Recorded,
+    string Message);
+
+public sealed record OnboardingStatusResponse(
+    string Status,
+    string Summary,
+    string LatestVersion,
+    string BootstrapScriptUrl,
+    bool RequiresExplicitApproval,
+    IReadOnlyList<AgentInstructionFileStatus> Files,
+    IReadOnlyList<string> Warnings,
+    string RecommendedAction);
+
+public sealed record AgentInstructionFileStatus(
+    string Target,
+    string Path,
+    string Status,
+    string? InstalledVersion,
+    string LatestVersion,
     string Message);

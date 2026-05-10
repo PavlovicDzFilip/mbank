@@ -7,7 +7,7 @@ using Pgvector.EntityFrameworkCore;
 
 namespace MBank.Api.Services;
 
-public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddings) : IMemoryService
+public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddings, IAgentInstructionService agentInstructions) : IMemoryService
 {
     private const double RrfK = 60;
     private const double PossibleMatchRawThreshold = 0.18;
@@ -165,6 +165,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             summary,
             strongMatches.Select(ToMemoryMatch).ToArray(),
             possibleMatches.Select(ToMemoryMatch).ToArray(),
+            agentInstructions.CheckOnboarding(),
             warnings,
             conflicts,
             questions);

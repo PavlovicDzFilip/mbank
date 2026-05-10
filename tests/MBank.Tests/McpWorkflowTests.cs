@@ -33,6 +33,7 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         var getTaskContextTool = ResolveToolName(tools, "GetTaskContext");
         var getTool = ResolveToolName(tools, "Get");
         var reportConflictTool = ResolveToolName(tools, "ReportConflict");
+        var checkOnboardingTool = ResolveToolName(tools, "CheckOnboarding");
 
         var remember = await CallToolAsync(client, rememberTool, new JsonObject
         {
@@ -112,7 +113,15 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             && x["matchReason"]!.GetValue<string>().Contains("subject match", StringComparison.OrdinalIgnoreCase)
             && x["matchReason"]!.GetValue<string>().Contains("vector similarity", StringComparison.OrdinalIgnoreCase));
         Assert.NotNull(contextContent["possibleMatches"]);
+        Assert.NotNull(contextContent["onboarding"]);
+        Assert.True(contextContent["onboarding"]!["requiresExplicitApproval"]!.GetValue<bool>());
         Assert.Null(contextContent["relevantMemories"]);
+
+        var onboarding = await CallToolAsync(client, checkOnboardingTool, new JsonObject());
+        var onboardingContent = GetStructuredContent(onboarding);
+        Assert.Equal("1.0.0", onboardingContent["latestVersion"]!.GetValue<string>());
+        Assert.True(onboardingContent["requiresExplicitApproval"]!.GetValue<bool>());
+        Assert.False(string.IsNullOrWhiteSpace(onboardingContent["recommendedAction"]!.GetValue<string>()));
 
         var warnings = contextContent["warnings"]!.AsArray();
         Assert.Contains(warnings, x =>

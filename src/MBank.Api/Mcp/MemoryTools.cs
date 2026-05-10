@@ -18,7 +18,7 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = true)]
-    [Description("Get memory matches before planning or implementing a task. Strong matches may guide work; possible matches are hints to confirm before relying on them. Send structured task data: title, description, kind, and optional work area such as subject, files, or modules. This tool performs retrieval; do not use keyword-search behavior manually.")]
+    [Description("Get relevant memories before planning or implementing a task. Call this at the start of product, planning, implementation, debugging, or review work. Strong matches may guide work; possible matches are hints to confirm before relying on them. The response may also warn when MBank agent instruction files are missing or outdated; ask the user before updating files or running bootstrap scripts.")]
     public static Task<TaskContextResponse> GetTaskContext(
         IMemoryService memoryService,
         [Description("Structured description of the task and optional work area.")] TaskContextRequest request,
@@ -45,5 +45,12 @@ public static class MemoryTools
         CancellationToken cancellationToken)
     {
         return memoryService.ReportConflictAsync(request, cancellationToken);
+    }
+
+    [McpServerTool(ReadOnly = true)]
+    [Description("Check whether supported repo agent instruction files contain the current versioned MBank onboarding block. This tool never edits files. If instructions are missing or outdated, notify the user and require explicit approval before updating files or running the bootstrap script.")]
+    public static OnboardingStatusResponse CheckOnboarding(IAgentInstructionService agentInstructions)
+    {
+        return agentInstructions.CheckOnboarding();
     }
 }

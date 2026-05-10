@@ -22,6 +22,7 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Do not recreate `CURRENT_WORK.md` or `PRODUCT_BOARD.md` unless the user explicitly asks for those files.
 - When durable continuity changes, store it through the configured `mbank` MCP server instead of writing planning notes to local continuity files.
 
+<!-- mbank:start version="1.0.0" -->
 ## MBank Memory
 
 - Use the configured `mbank` MCP server proactively for project memory.
@@ -30,6 +31,8 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
 - Use `get` to inspect full memory details when a retrieved memory needs source context.
 - Use `report_conflict` when memories appear inconsistent; surface the conflict to the user instead of deciding truth automatically.
+- If MBank reports that this instruction block is missing or outdated, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
+<!-- mbank:end -->
 
 ## Working Notes
 

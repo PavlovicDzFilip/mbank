@@ -50,3 +50,67 @@ The default launch profile uses `http://localhost:5221`. The root endpoint retur
 - `GetTaskContext`: retrieves strong and possible memory matches for a structured task before planning or implementation.
 - `Get`: fetches one memory with source evidence and linked memories.
 - `ReportConflict`: records that memories appear to conflict and should be clarified later.
+- `CheckOnboarding`: reports whether supported repo agent instruction files contain the current versioned MBank block.
+
+## Agent Instruction Bootstrap
+
+Adding the MCP server makes MBank available to an agent. For reliable behavior, each repo should also include a small MBank instruction block in the agent instruction file.
+
+The bootstrap scripts only add or update content between `<!-- mbank:start ... -->` and `<!-- mbank:end -->`. They prompt before changing files by default.
+
+When the MBank instruction text changes, bump the block version everywhere it is defined so agents can detect stale repo instructions.
+
+Placeholder public URL:
+
+```bash
+curl -fsSL https://mbank.dev/bootstrap-agent.sh | sh
+```
+
+Inspect-first usage:
+
+```bash
+curl -fsSL https://mbank.dev/bootstrap-agent.sh -o bootstrap-agent.sh
+less bootstrap-agent.sh
+sh bootstrap-agent.sh
+```
+
+Local development usage:
+
+```powershell
+.\scripts\bootstrap-agent.ps1 -Client codex
+```
+
+```bash
+sh scripts/bootstrap-agent.sh --client codex
+```
+
+Supported clients:
+
+- `codex`: updates `AGENTS.md`.
+- `claude`: updates `CLAUDE.md`.
+- `cursor`: updates `.cursor/rules/mbank.mdc`.
+- `all`: updates all supported targets.
+
+Noninteractive usage is available with `--yes` or `-Yes`, but repo instruction updates should still be explicitly approved by the user before an agent runs them.
+
+Manual block:
+
+```md
+<!-- mbank:start version="1.0.0" -->
+## MBank Memory
+
+Use the configured `mbank` MCP server proactively for durable project memory.
+
+At the start of a new product, planning, implementation, debugging, or review task, call `get_task_context` with a structured task description before proposing a plan or making changes.
+
+Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
+
+Use `get` to inspect full memory details when a retrieved memory needs source context.
+
+Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.
+
+Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
+
+If MBank reports that this instruction block is missing or outdated, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
+<!-- mbank:end -->
+```
