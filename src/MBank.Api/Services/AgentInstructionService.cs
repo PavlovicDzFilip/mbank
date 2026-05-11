@@ -13,7 +13,7 @@ public interface IAgentInstructionService
 public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration) : IAgentInstructionService
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
-    public const string LatestInstructionVersion = "1.0.0";
+    public const string LatestInstructionVersion = "1.0.2";
     public const string BootstrapScriptUrl = "https://mbank.dev/bootstrap-agent.sh";
 
     public static readonly string CanonicalInstructionBlock = $"""
@@ -27,6 +27,8 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
 
         Use `get` to inspect full memory details when a retrieved memory needs source context.
+
+        When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.
 
         Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.
 

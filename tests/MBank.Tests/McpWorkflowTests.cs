@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using MBank.Api.Services;
 
 namespace MBank.Tests;
 
@@ -119,16 +120,28 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         Assert.NotNull(contextContent["onboarding"]);
         Assert.True(contextContent["onboarding"]!["requiresExplicitApproval"]!.GetValue<bool>());
         Assert.Null(contextContent["relevantMemories"]);
+        Assert.Null(contextContent["warnings"]);
+        Assert.Null(contextContent["conflicts"]);
+        Assert.Null(contextContent["clarifyingQuestions"]);
 
         var onboarding = await CallToolAsync(client, checkOnboardingTool, new JsonObject());
         var onboardingContent = GetStructuredContent(onboarding);
-        Assert.Equal("1.0.0", onboardingContent["latestVersion"]!.GetValue<string>());
+        Assert.Equal(AgentInstructionService.LatestInstructionVersion, onboardingContent["latestVersion"]!.GetValue<string>());
         Assert.True(onboardingContent["requiresExplicitApproval"]!.GetValue<bool>());
         Assert.False(string.IsNullOrWhiteSpace(onboardingContent["recommendedAction"]!.GetValue<string>()));
 
-        var warnings = contextContent["warnings"]!.AsArray();
-        Assert.Contains(warnings, x =>
-            x!.GetValue<string>().Contains("/mcp agent memory workflow", StringComparison.OrdinalIgnoreCase));
+        Assert.False(contextContent["canProceed"]!.GetValue<bool>());
+        var attentionItems = contextContent["attentionItems"]!.AsArray();
+        Assert.Contains(attentionItems, x =>
+            x!["kind"]!.GetValue<string>() == "warning"
+            && x["action"]!.GetValue<string>() == "notice"
+            && x["summary"]!.GetValue<string>().Contains("/mcp agent memory workflow", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(attentionItems, x =>
+            x!["kind"]!.GetValue<string>() == "conflict"
+            && x["action"]!.GetValue<string>() == "ask_user"
+            && x["question"]!.GetValue<string>().Contains("Which one should guide this task?", StringComparison.OrdinalIgnoreCase)
+            && x["memoryIds"]!.AsArray().Any(id => id!.GetValue<Guid>() == decisionId)
+            && x["memoryIds"]!.AsArray().Any(id => id!.GetValue<Guid>() == warningId));
 
         var detail = await CallToolAsync(client, getTool, new JsonObject
         {

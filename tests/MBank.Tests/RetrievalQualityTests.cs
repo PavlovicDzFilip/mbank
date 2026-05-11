@@ -37,7 +37,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         var block = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("<!-- mbank:start version=\"1.0.0\" -->", block);
+        Assert.Contains($"<!-- mbank:start version=\"{AgentInstructionService.LatestInstructionVersion}\" -->", block);
         Assert.Contains("## MBank Memory", block);
         Assert.Contains("get_task_context", block);
     }
@@ -83,8 +83,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.NotEmpty(response.StrongMatches);
         Assert.Contains("working directory", response.StrongMatches[0].Summary);
         Assert.Contains("user-secrets", response.StrongMatches[0].Summary);
-        Assert.Empty(response.Conflicts);
-        Assert.Empty(response.ClarifyingQuestions);
+        Assert.True(response.CanProceed);
+        Assert.DoesNotContain(response.AttentionItems, x => x.Kind == "conflict");
+        Assert.DoesNotContain(response.AttentionItems, x => x.Kind == "clarifying_question");
     }
 
     [Fact]
@@ -143,13 +144,21 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             new WorkArea("MVP scope", "product_capability"),
             Limit: 5), CancellationToken.None);
 
-        Assert.Contains(response.Warnings, x => x.Contains("Do not start UI work", StringComparison.OrdinalIgnoreCase));
-        Assert.NotEmpty(response.Conflicts);
-        Assert.Contains(response.ClarifyingQuestions, x => x.Contains("conflicting memories", StringComparison.OrdinalIgnoreCase));
-        Assert.All(response.Conflicts, conflict =>
+        Assert.False(response.CanProceed);
+        Assert.Contains(response.AttentionItems, x =>
+            x.Kind == "warning"
+            && x.Action == TaskContextAttentionAction.Notice
+            && x.Summary.Contains("Do not start UI work", StringComparison.OrdinalIgnoreCase));
+        var conflicts = response.AttentionItems.Where(x => x.Kind == "conflict").ToArray();
+        Assert.NotEmpty(conflicts);
+        Assert.All(conflicts, conflict =>
         {
-            var existing = response.StrongMatches.Single(x => x.Id == conflict.ExistingMemoryId);
-            var current = response.StrongMatches.Single(x => x.Id == conflict.NewMemoryId);
+            Assert.Equal(TaskContextAttentionAction.AskUser, conflict.Action);
+            Assert.Contains("Which one should guide this task?", conflict.Question);
+            Assert.NotNull(conflict.MemoryIds);
+            Assert.Equal(2, conflict.MemoryIds.Count);
+            var existing = response.StrongMatches.Single(x => x.Id == conflict.MemoryIds[0]);
+            var current = response.StrongMatches.Single(x => x.Id == conflict.MemoryIds[1]);
             Assert.Equal(existing.Subject, current.Subject);
         });
     }
@@ -170,8 +179,8 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             Limit: 5), CancellationToken.None);
 
         Assert.True(response.StrongMatches.Select(x => x.Subject).Distinct().Count() > 1);
-        Assert.Empty(response.Conflicts);
-        Assert.DoesNotContain(response.ClarifyingQuestions, x => x.Contains("conflicting memories", StringComparison.OrdinalIgnoreCase));
+        Assert.True(response.CanProceed);
+        Assert.DoesNotContain(response.AttentionItems, x => x.Kind == "conflict");
     }
 
     [Fact]
@@ -204,7 +213,10 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.Equal("possible", possible.MatchStrength);
         Assert.Equal(0.98, possible.MemoryConfidence);
         Assert.InRange(possible.MatchScore, 0.40, 0.74);
-        Assert.Contains(response.ClarifyingQuestions, x => x.Contains("Only possible memory matches", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.AttentionItems, x =>
+            x.Kind == "possible_matches"
+            && x.Action == TaskContextAttentionAction.Notice
+            && x.Summary.Contains("Only possible memory matches", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

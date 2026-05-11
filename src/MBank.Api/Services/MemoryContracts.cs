@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace MBank.Api.Services;
 
 public sealed record RememberRequest(
@@ -61,9 +63,25 @@ public sealed record TaskContextResponse(
     IReadOnlyList<MemoryMatch> StrongMatches,
     IReadOnlyList<MemoryMatch> PossibleMatches,
     OnboardingStatusResponse Onboarding,
-    IReadOnlyList<string> Warnings,
-    IReadOnlyList<PossibleConflict> Conflicts,
-    IReadOnlyList<string> ClarifyingQuestions);
+    bool CanProceed,
+    IReadOnlyList<TaskContextAttentionItem> AttentionItems);
+
+public sealed record TaskContextAttentionItem(
+    string Kind,
+    TaskContextAttentionAction Action,
+    string Summary,
+    string? Question = null,
+    IReadOnlyList<Guid>? MemoryIds = null);
+
+[JsonConverter(typeof(JsonStringEnumConverter<TaskContextAttentionAction>))]
+public enum TaskContextAttentionAction
+{
+    [JsonStringEnumMemberName("notice")]
+    Notice,
+
+    [JsonStringEnumMemberName("ask_user")]
+    AskUser
+}
 
 public sealed record MemoryMatch(
     Guid Id,

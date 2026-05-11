@@ -146,19 +146,14 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             .Take(limit)
             .ToArray();
 
-        var warnings = strongMatches
-            .Where(x => WarningTypes.Contains(x.Memory.Type))
-            .Select(x => x.Memory.Summary)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
         var conflicts = FindContextConflicts(strongMatches);
-        var questions = BuildClarifyingQuestions(request, strongMatches, possibleMatches, conflicts);
+        var attentionItems = BuildAttentionItems(request, strongMatches, possibleMatches, conflicts);
 
         var status = strongMatches.Length > 0
             ? "context_found"
             : possibleMatches.Length > 0 ? "possible_context_found" : "no_context_found";
         var summary = BuildContextSummary(strongMatches.Length, possibleMatches.Length);
+        var canProceed = attentionItems.All(x => x.Action != TaskContextAttentionAction.AskUser);
 
         return new TaskContextResponse(
             status,
@@ -166,9 +161,8 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             strongMatches.Select(ToMemoryMatch).ToArray(),
             possibleMatches.Select(ToMemoryMatch).ToArray(),
             agentInstructions.CheckOnboarding(),
-            warnings,
-            conflicts,
-            questions);
+            canProceed,
+            attentionItems);
     }
 
     public async Task<MemoryDetail?> GetAsync(Guid id, CancellationToken cancellationToken)
@@ -493,35 +487,92 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             .ToArray();
     }
 
-    private static IReadOnlyList<string> BuildClarifyingQuestions(
+    private static IReadOnlyList<TaskContextAttentionItem> BuildAttentionItems(
         TaskContextRequest request,
         IReadOnlyList<ScoredMemory> strongMatches,
         IReadOnlyList<ScoredMemory> possibleMatches,
         IReadOnlyList<PossibleConflict> conflicts)
     {
-        var questions = new List<string>();
+        var items = new List<TaskContextAttentionItem>();
+
+        items.AddRange(strongMatches
+            .Where(x => WarningTypes.Contains(x.Memory.Type))
+            .GroupBy(x => x.Memory.Summary, StringComparer.OrdinalIgnoreCase)
+            .Select(x =>
+            {
+                var match = x.First();
+                return new TaskContextAttentionItem(
+                    "warning",
+                    TaskContextAttentionAction.Notice,
+                    match.Memory.Summary,
+                    MemoryIds: [match.Memory.Id]);
+            }));
 
         if (string.IsNullOrWhiteSpace(request.WorkArea?.Subject))
         {
-            questions.Add("What product capability or technical area is this task primarily about?");
+            items.Add(new TaskContextAttentionItem(
+                "clarifying_question",
+                TaskContextAttentionAction.Notice,
+                "The task did not include a product capability or technical area.",
+                "What product capability or technical area is this task primarily about?"));
         }
 
         if (strongMatches.Count == 0 && possibleMatches.Count == 0)
         {
-            questions.Add("Is there any product rationale, technical convention, or constraint that should guide this task?");
+            items.Add(new TaskContextAttentionItem(
+                "clarifying_question",
+                TaskContextAttentionAction.Notice,
+                "No memory matches were found for this task.",
+                "Is there any product rationale, technical convention, or constraint that should guide this task?"));
         }
 
         if (strongMatches.Count == 0 && possibleMatches.Count > 0)
         {
-            questions.Add("Only possible memory matches were found. Should any of them guide this task?");
+            items.Add(new TaskContextAttentionItem(
+                "possible_matches",
+                TaskContextAttentionAction.Notice,
+                "Only possible memory matches were found.",
+                "Should any possible memory matches guide this task?",
+                possibleMatches.Select(x => x.Memory.Id).ToArray()));
         }
 
-        if (conflicts.Count > 0)
+        foreach (var conflict in conflicts)
         {
-            questions.Add("There may be conflicting memories. Which one should guide this task?");
+            items.Add(new TaskContextAttentionItem(
+                "conflict",
+                TaskContextAttentionAction.AskUser,
+                BuildConflictAttentionSummary(conflict, strongMatches),
+                "I found conflicting memories. Which one should guide this task?",
+                BuildConflictMemoryIds(conflict)));
         }
 
-        return questions;
+        return items;
+    }
+
+    private static IReadOnlyList<Guid> BuildConflictMemoryIds(PossibleConflict conflict)
+    {
+        if (conflict.NewMemoryId is null)
+        {
+            return [conflict.ExistingMemoryId];
+        }
+
+        return [conflict.ExistingMemoryId, conflict.NewMemoryId.Value];
+    }
+
+    private static string BuildConflictAttentionSummary(PossibleConflict conflict, IReadOnlyList<ScoredMemory> strongMatches)
+    {
+        var existing = strongMatches.FirstOrDefault(x => x.Memory.Id == conflict.ExistingMemoryId)?.Memory.Summary
+            ?? conflict.ExistingSummary;
+        var current = conflict.NewMemoryId is null
+            ? null
+            : strongMatches.FirstOrDefault(x => x.Memory.Id == conflict.NewMemoryId.Value)?.Memory.Summary;
+
+        if (string.IsNullOrWhiteSpace(current))
+        {
+            return $"Conflicting memory may need clarification: {existing}";
+        }
+
+        return $"Conflicting memories may need clarification: {existing} / {current}";
     }
 
     private static string BuildTaskQueryText(TaskContextRequest request)
