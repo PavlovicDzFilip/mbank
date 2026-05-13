@@ -1,4 +1,6 @@
+using MBank.Api.Auth;
 using MBank.Api.Data;
+using MBank.Api.Domain;
 using MBank.Api.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -48,7 +50,8 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
                 ["ConnectionStrings:MemoryDb"] = RequireDatabase().ConnectionString,
                 ["OpenAI:ApiKey"] = "test-api-key",
                 ["OpenAI:EmbeddingModel"] = "test-embedding-model",
-                ["OpenAI:EmbeddingDimensions"] = "1536"
+                ["OpenAI:EmbeddingDimensions"] = "1536",
+                ["MBANK_ADMIN_TOKEN"] = TestDatabase.AdminToken
             });
         });
 
@@ -56,11 +59,19 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
         {
             services.RemoveAll<DbContextOptions<MemoryDbContext>>();
             services.RemoveAll<IEmbeddingService>();
+            services.RemoveAll<CurrentMemoryScope>();
 
             services.AddDbContext<MemoryDbContext>(options =>
                 options.UseNpgsql(RequireDatabase().ConnectionString, npgsql => npgsql.UseVector()));
 
             services.AddScoped<IEmbeddingService, FakeEmbeddingService>();
+            services.AddScoped(_ => new CurrentMemoryScope
+            {
+                Current = new AuthenticatedMemoryScope(
+                    TestDatabase.UserId,
+                    TestDatabase.ProjectId,
+                    AccessTokenPermissions.Crud)
+            });
         });
     }
 

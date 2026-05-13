@@ -1,5 +1,9 @@
 using System.Net;
+using MBank.Api.Auth;
+using MBank.Api.Data;
+using MBank.Api.Domain;
 using MBank.Api.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MBank.Tests;
@@ -43,10 +47,69 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task GetTaskContext_only_reads_memories_from_current_project()
+    {
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
+        var currentScope = scope.ServiceProvider.GetRequiredService<CurrentMemoryScope>();
+        var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
+
+        await service.RememberAsync(new RememberRequest(
+            [
+                new MemoryDraft(
+                    "decision",
+                    "Default project memory should not leak into another project.",
+                    "Project isolation",
+                    "technical-area",
+                    ["isolation"],
+                    1)
+            ]),
+            CancellationToken.None);
+
+        var otherProject = new Project { Name = "Other Project" };
+        db.Projects.Add(otherProject);
+        await db.SaveChangesAsync();
+        currentScope.Current = new AuthenticatedMemoryScope(
+            TestDatabase.UserId,
+            otherProject.Id,
+            AccessTokenPermissions.Crud);
+
+        var response = await service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Check project isolation",
+                "Can this project see the default project memory?",
+                "validation"),
+            new WorkArea("Project isolation", "technical-area"),
+            Limit: 4), CancellationToken.None);
+
+        Assert.Equal("no_context_found", response.Status);
+        Assert.Empty(response.StrongMatches);
+        Assert.Empty(response.PossibleMatches);
+    }
+
+    [Fact]
+    public async Task GetTaskContext_rejects_absolute_file_paths()
+    {
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Validate path handling",
+                "Reject absolute local paths so MBank never stores machine-specific repo locations.",
+                "validation"),
+            new WorkArea("Path validation", "technical-area", Files: ["D:\\MBank\\src\\MBank.Api\\Program.cs"])),
+            CancellationToken.None));
+
+        Assert.Contains("absolute local paths are not allowed", error.Message);
+        Assert.Contains("repository-relative paths", error.Message);
+    }
+
+    [Fact]
     public async Task GetTaskContext_ranks_mvp_scope_guidance_above_noisy_matches()
     {
         using var scope = factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
         await SeedStandardMemoriesAsync(service);
 
         var response = await service.GetTaskContextAsync(new TaskContextRequest(
@@ -69,7 +132,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     public async Task GetTaskContext_retrieves_launch_working_directory_guidance()
     {
         using var scope = factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
         await SeedStandardMemoriesAsync(service);
 
         var response = await service.GetTaskContextAsync(new TaskContextRequest(
@@ -92,7 +155,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     public async Task GetTaskContext_includes_full_text_candidates_in_ranked_matches()
     {
         using var scope = factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
         await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
@@ -133,7 +196,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     public async Task GetTaskContext_reports_warning_and_same_subject_conflict()
     {
         using var scope = factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
         await SeedStandardMemoriesAsync(service);
 
         var response = await service.GetTaskContextAsync(new TaskContextRequest(
@@ -167,7 +230,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     public async Task GetTaskContext_does_not_invent_cross_subject_conflicts()
     {
         using var scope = factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
         await SeedStandardMemoriesAsync(service, includeMvpWarning: false);
 
         var response = await service.GetTaskContextAsync(new TaskContextRequest(
@@ -187,7 +250,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     public async Task GetTaskContext_returns_possible_matches_separately_with_bucketed_scores()
     {
         using var scope = factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
         await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
@@ -223,7 +286,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     public async Task Get_returns_source_evidence_for_stored_memory()
     {
         using var scope = factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IMemoryService>();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
         var stored = await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
@@ -248,7 +311,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.Contains("proves the memory detail endpoint", detail.Source.SourceText);
     }
 
-    private static async Task SeedStandardMemoriesAsync(IMemoryService service, bool includeMvpWarning = true)
+    private static async Task SeedStandardMemoriesAsync(MemoryService service, bool includeMvpWarning = true)
     {
         var memories = new List<MemoryDraft>
         {

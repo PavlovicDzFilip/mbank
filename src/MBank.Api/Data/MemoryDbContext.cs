@@ -6,6 +6,12 @@ namespace MBank.Api.Data;
 
 public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) : DbContext(options)
 {
+    public DbSet<UserAccount> Users => Set<UserAccount>();
+
+    public DbSet<Project> Projects => Set<Project>();
+
+    public DbSet<AccessToken> AccessTokens => Set<AccessToken>();
+
     public DbSet<MemoryEntry> Memories => Set<MemoryEntry>();
 
     public DbSet<SourceRecord> SourceRecords => Set<SourceRecord>();
@@ -15,6 +21,42 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("vector");
+
+        modelBuilder.Entity<UserAccount>(entity =>
+        {
+            entity.ToTable("users");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(256);
+            entity.Property(x => x.Email).HasMaxLength(320);
+            entity.HasIndex(x => x.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<Project>(entity =>
+        {
+            entity.ToTable("projects");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(256);
+            entity.HasIndex(x => x.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<AccessToken>(entity =>
+        {
+            entity.ToTable("access_tokens");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(256);
+            entity.Property(x => x.TokenHash).HasMaxLength(128);
+            entity.Property(x => x.Permissions).HasConversion<string>().HasMaxLength(64);
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.ProjectId, x.Name }).IsUnique();
+            entity.HasOne<UserAccount>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Project>()
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<MemoryEntry>(entity =>
         {
@@ -33,6 +75,8 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
                 .HasIndex(x => x.SearchVector)
                 .HasMethod("GIN");
             entity.HasIndex(x => x.Type);
+            entity.HasIndex(x => x.UserId);
+            entity.HasIndex(x => x.ProjectId);
             entity.HasIndex(x => x.Subject);
             entity.HasIndex(x => x.SubjectKind);
             entity.HasIndex(x => x.Status);
@@ -45,6 +89,14 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
                 .WithMany()
                 .HasForeignKey(x => x.SourceRecordId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<UserAccount>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Project>()
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<SourceRecord>(entity =>

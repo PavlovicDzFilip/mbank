@@ -1,4 +1,5 @@
 using System.Text;
+using MBank.Api.Auth;
 using MBank.Api.Data;
 using MBank.Api.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,11 @@ using Pgvector.EntityFrameworkCore;
 
 namespace MBank.Api.Services;
 
-public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddings, IAgentInstructionService agentInstructions) : IMemoryService
+public sealed class MemoryService(
+    MemoryDbContext db,
+    IEmbeddingService embeddings,
+    AgentInstructionService agentInstructions,
+    CurrentMemoryScope currentScope)
 {
     private const double RrfK = 60;
     private const double PossibleMatchRawThreshold = 0.18;
@@ -22,6 +27,9 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
 
     public async Task<RememberResponse> RememberAsync(RememberRequest request, CancellationToken cancellationToken)
     {
+        var scope = RequireScope();
+        ValidateRememberRequest(request);
+
         if (request.Memories.Count == 0)
         {
             return new RememberResponse([], []);
@@ -61,10 +69,12 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
                 Confidence = Math.Clamp(draft.Confidence ?? 0.7, 0, 1),
                 SearchText = searchText,
                 Embedding = vector,
-                SourceRecordId = source?.Id
+                SourceRecordId = source?.Id,
+                UserId = scope.UserId,
+                ProjectId = scope.ProjectId
             };
 
-            var related = await FindSimilarMemoriesAsync(vector, entry.Subject, entry.SubjectKind, 4, cancellationToken);
+            var related = await FindSimilarMemoriesAsync(scope.ProjectId, vector, entry.Subject, entry.SubjectKind, 4, cancellationToken);
 
             db.Memories.Add(entry);
             stored.Add(ToStoredMemory(entry));
@@ -86,6 +96,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
 
     public async Task<TaskContextResponse> GetTaskContextAsync(TaskContextRequest request, CancellationToken cancellationToken)
     {
+        var scope = RequireScope();
         ValidateTaskRequest(request);
 
         var queryText = BuildTaskQueryText(request);
@@ -95,7 +106,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         var candidateLimit = Math.Max(limit * 4, 20);
         var vectorCandidateRows = await db.Memories
             .AsNoTracking()
-            .Where(x => x.Status == "active" && x.Embedding != null)
+            .Where(x => x.ProjectId == scope.ProjectId && x.Status == "active" && x.Embedding != null)
             .OrderBy(x => x.Embedding!.CosineDistance(queryVector))
             .Take(candidateLimit)
             .Select(x => new
@@ -110,7 +121,8 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
             ? []
             : await db.Memories
                 .AsNoTracking()
-                .Where(x => x.Status == "active"
+                .Where(x => x.ProjectId == scope.ProjectId
+                    && x.Status == "active"
                     && x.SearchVector.Matches(EF.Functions.ToTsQuery("english", fullTextQuery)))
                 .OrderByDescending(x => x.SearchVector.Rank(
                     EF.Functions.ToTsQuery("english", fullTextQuery),
@@ -167,9 +179,10 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
 
     public async Task<MemoryDetail?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
+        var scope = RequireScope();
         var memory = await db.Memories
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == id && x.ProjectId == scope.ProjectId, cancellationToken);
 
         if (memory is null)
         {
@@ -184,9 +197,13 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
                 .FirstOrDefaultAsync(x => x.Id == memory.SourceRecordId, cancellationToken);
         }
 
+        var projectMemoryIds = db.Memories
+            .Where(x => x.ProjectId == scope.ProjectId)
+            .Select(x => x.Id);
         var links = await db.MemoryLinks
             .AsNoTracking()
             .Where(x => x.FromMemoryId == id || x.ToMemoryId == id)
+            .Where(x => projectMemoryIds.Contains(x.FromMemoryId) && projectMemoryIds.Contains(x.ToMemoryId))
             .ToListAsync(cancellationToken);
         var linkDetails = links
             .Select(x => new MemoryLinkDetail(
@@ -221,6 +238,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
 
     public async Task<ReportConflictResponse> ReportConflictAsync(ReportConflictRequest request, CancellationToken cancellationToken)
     {
+        var scope = RequireScope();
         if (request.MemoryIds.Count < 2)
         {
             return new ReportConflictResponse(false, "Report at least two memory ids to record a conflict.");
@@ -228,7 +246,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
 
         var ids = request.MemoryIds.Distinct().ToArray();
         var memories = await db.Memories
-            .Where(x => ids.Contains(x.Id))
+            .Where(x => x.ProjectId == scope.ProjectId && ids.Contains(x.Id))
             .ToListAsync(cancellationToken);
 
         if (memories.Count < 2)
@@ -270,6 +288,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
     }
 
     private async Task<List<(MemoryEntry Memory, double Distance)>> FindSimilarMemoriesAsync(
+        Guid projectId,
         Vector vector,
         string? subject,
         string? subjectKind,
@@ -278,7 +297,7 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
     {
         var query = db.Memories
             .AsNoTracking()
-            .Where(x => x.Status == "active" && x.Embedding != null);
+            .Where(x => x.ProjectId == projectId && x.Status == "active" && x.Embedding != null);
 
         if (!string.IsNullOrWhiteSpace(subject))
         {
@@ -682,6 +701,14 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         }
     }
 
+    private static void ValidateRememberRequest(RememberRequest request)
+    {
+        if (request.Source?.SourceUrl is { } sourceUrl && LooksLikeLocalPath(sourceUrl))
+        {
+            throw new ArgumentException("Invalid source URL: absolute local paths are not allowed. Send repository-relative paths such as \"src/MBank.Api/Program.cs\". MBank does not store machine-specific repo locations.");
+        }
+    }
+
     private static void ValidateTaskRequest(TaskContextRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Task.Title))
@@ -698,6 +725,48 @@ public sealed class MemoryService(MemoryDbContext db, IEmbeddingService embeddin
         {
             throw new ArgumentException("Task kind is required.");
         }
+
+        foreach (var file in request.WorkArea?.Files ?? [])
+        {
+            ValidateRelativeFilePath(file);
+        }
+    }
+
+    private static void ValidateRelativeFilePath(string file)
+    {
+        if (string.IsNullOrWhiteSpace(file))
+        {
+            return;
+        }
+
+        if (LooksLikeLocalPath(file))
+        {
+            throw new ArgumentException($"Invalid file path \"{file}\": absolute local paths are not allowed. Send repository-relative paths such as \"src/MBank.Api/Program.cs\". MBank does not store machine-specific repo locations.");
+        }
+
+        var normalized = file.Replace('\\', '/');
+        if (normalized.Split('/', StringSplitOptions.RemoveEmptyEntries).Any(segment => segment == ".."))
+        {
+            throw new ArgumentException($"Invalid file path \"{file}\": parent-directory traversal is not allowed. Send repository-relative paths such as \"src/MBank.Api/Program.cs\".");
+        }
+    }
+
+    private static bool LooksLikeLocalPath(string value)
+    {
+        var trimmed = value.Trim();
+        return trimmed.StartsWith("/", StringComparison.Ordinal)
+            || trimmed.StartsWith("\\", StringComparison.Ordinal)
+            || trimmed.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
+            || (trimmed.Length >= 3
+                && char.IsAsciiLetter(trimmed[0])
+                && trimmed[1] == ':'
+                && (trimmed[2] == '\\' || trimmed[2] == '/'));
+    }
+
+    private AuthenticatedMemoryScope RequireScope()
+    {
+        return currentScope.Current
+            ?? throw new InvalidOperationException("MBank memory operations require an authenticated project token.");
     }
 
     private static bool TextEquals(string? left, string? right)

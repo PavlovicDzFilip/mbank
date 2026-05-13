@@ -22,6 +22,10 @@ public sealed class MemoryEntry
 
     public string Status { get; set; } = "active";
 
+    public Guid UserId { get; set; }
+
+    public Guid ProjectId { get; set; }
+
     public string SearchText { get; set; } = "";
 
     public NpgsqlTsVector SearchVector { get; private set; } = null!;

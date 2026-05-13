@@ -1,3 +1,5 @@
+using MBank.Api.Admin;
+using MBank.Api.Auth;
 using MBank.Api.Data;
 using MBank.Api.Mcp;
 using MBank.Api.Options;
@@ -8,6 +10,15 @@ using Pgvector.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddEnvironmentVariables();
+
+builder.Services
+    .AddOptions<AdminAuthOptions>()
+    .Configure<IConfiguration>((options, configuration) =>
+    {
+        options.Token = configuration["MBANK_ADMIN_TOKEN"];
+    })
+    .Validate(options => !string.IsNullOrWhiteSpace(options.Token), "MBANK_ADMIN_TOKEN is required.")
+    .ValidateOnStart();
 
 builder.Services
     .AddOptions<OpenAiOptions>()
@@ -24,8 +35,9 @@ builder.Services.AddDbContext<MemoryDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));
 
 builder.Services.AddScoped<IEmbeddingService, OpenAiEmbeddingService>();
-builder.Services.AddSingleton<IAgentInstructionService, AgentInstructionService>();
-builder.Services.AddScoped<IMemoryService, MemoryService>();
+builder.Services.AddSingleton<AgentInstructionService>();
+builder.Services.AddScoped<MemoryService>();
+builder.Services.AddScoped<CurrentMemoryScope>();
 
 builder.Services
     .AddMcpServer(options =>
@@ -46,11 +58,17 @@ app.MapGet("/", () => Results.Ok(new
     mcp = "/mcp"
 }));
 
-app.MapGet("/onboarding/agent-instructions", (IAgentInstructionService agentInstructions) =>
+app.MapGet("/onboarding/agent-instructions", (AgentInstructionService agentInstructions) =>
 {
     var block = agentInstructions.GetInstructionBlock();
     return Results.Text(block.Content, "text/markdown");
 });
+
+app.MapAdminProvisioningEndpoints();
+
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/mcp"),
+    branch => branch.UseMiddleware<McpProjectTokenMiddleware>());
 
 app.MapMcp("/mcp");
 

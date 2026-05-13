@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -22,6 +23,30 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
     public Task DisposeAsync()
     {
         return Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task Mcp_endpoint_rejects_missing_project_token()
+    {
+        var client = factory.CreateClient();
+        using var message = new HttpRequestMessage(HttpMethod.Post, "/mcp")
+        {
+            Content = JsonContent.Create(new JsonObject
+            {
+                ["jsonrpc"] = "2.0",
+                ["id"] = Guid.NewGuid().ToString("N"),
+                ["method"] = "tools/list",
+                ["params"] = new JsonObject()
+            }, options: JsonOptions)
+        };
+        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+
+        using var response = await client.SendAsync(message);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Contains("project access token", body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -219,6 +244,7 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         };
         message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestDatabase.ProjectToken);
 
         using var response = await client.SendAsync(message);
         var body = await response.Content.ReadAsStringAsync();

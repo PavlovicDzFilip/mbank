@@ -3,14 +3,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace MBank.Api.Services;
 
-public interface IAgentInstructionService
-{
-    OnboardingStatusResponse CheckOnboarding();
-
-    AgentInstructionBlock GetInstructionBlock();
-}
-
-public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration) : IAgentInstructionService
+public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration)
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
     public const string LatestInstructionVersion = "1.0.2";
