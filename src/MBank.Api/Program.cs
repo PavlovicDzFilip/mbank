@@ -37,7 +37,7 @@ builder.Services.AddDbContext<MemoryDbContext>(options =>
 builder.Services.AddScoped<IEmbeddingService, OpenAiEmbeddingService>();
 builder.Services.AddSingleton<AgentInstructionService>();
 builder.Services.AddScoped<MemoryService>();
-builder.Services.AddScoped<CurrentMemoryScope>();
+builder.Services.AddScoped<MemoryScopeProvider>();
 
 builder.Services
     .AddMcpServer(options =>

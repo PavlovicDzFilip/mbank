@@ -26,8 +26,12 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
         {
             entity.ToTable("users");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.Name).HasMaxLength(256);
-            entity.Property(x => x.Email).HasMaxLength(320);
+            entity.Property(x => x.Id)
+                .HasConversion(id => id.Value, value => new UserId(value));
+            entity.Property(x => x.Name)
+                .HasMaxLength(256);
+            entity.Property(x => x.Email)
+                .HasMaxLength(320);
             entity.HasIndex(x => x.Email).IsUnique();
         });
 
@@ -35,7 +39,10 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
         {
             entity.ToTable("projects");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.Name).HasMaxLength(256);
+            entity.Property(x => x.Id)
+                .HasConversion(id => id.Value, value => new ProjectId(value));
+            entity.Property(x => x.Name)
+                .HasMaxLength(256);
             entity.HasIndex(x => x.Name).IsUnique();
         });
 
@@ -43,8 +50,16 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
         {
             entity.ToTable("access_tokens");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.Name).HasMaxLength(256);
-            entity.Property(x => x.TokenHash).HasMaxLength(128);
+            entity.Property(x => x.Id)
+                .HasConversion(id => id.Value, value => new AccessTokenId(value));
+            entity.Property(x => x.UserId)
+                .HasConversion(id => id.Value, value => new UserId(value));
+            entity.Property(x => x.ProjectId)
+                .HasConversion(id => id.Value, value => new ProjectId(value));
+            entity.Property(x => x.Name)
+                .HasMaxLength(256);
+            entity.Property(x => x.TokenHash)
+                .HasMaxLength(128);
             entity.Property(x => x.Permissions).HasConversion<string>().HasMaxLength(64);
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.HasIndex(x => new { x.UserId, x.ProjectId, x.Name }).IsUnique();
@@ -62,12 +77,28 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
         {
             entity.ToTable("memories");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.Type).HasMaxLength(64);
-            entity.Property(x => x.Summary).HasMaxLength(2000);
-            entity.Property(x => x.Subject).HasMaxLength(256);
-            entity.Property(x => x.SubjectKind).HasMaxLength(64);
-            entity.Property(x => x.Status).HasMaxLength(32);
-            entity.Property(x => x.SearchText).HasMaxLength(5000);
+            entity.Property(x => x.Id)
+                .HasConversion(id => id.Value, value => new MemoryId(value));
+            entity.Property(x => x.Type)
+                .HasMaxLength(64);
+            entity.Property(x => x.Summary)
+                .HasMaxLength(2000);
+            entity.Property(x => x.Subject)
+                .HasMaxLength(256);
+            entity.Property(x => x.SubjectKind)
+                .HasMaxLength(64);
+            entity.Property(x => x.Status)
+                .HasMaxLength(32);
+            entity.Property(x => x.UserId)
+                .HasConversion(id => id.Value, value => new UserId(value));
+            entity.Property(x => x.ProjectId)
+                .HasConversion(id => id.Value, value => new ProjectId(value));
+            entity.Property(x => x.SearchText)
+                .HasMaxLength(5000);
+            entity.Property(x => x.SourceRecordId)
+                .HasConversion(
+                    sourceRecordId => sourceRecordId.HasValue ? sourceRecordId.Value.Value : (Guid?)null,
+                    value => value.HasValue ? new SourceRecordId(value.Value) : null);
             entity.HasGeneratedTsVectorColumn(
                 x => x.SearchVector,
                 "english",
@@ -103,6 +134,8 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
         {
             entity.ToTable("source_records");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id)
+                .HasConversion(id => id.Value, value => new SourceRecordId(value));
             entity.Property(x => x.SourceKind).HasMaxLength(64);
             entity.Property(x => x.SourceUrl).HasMaxLength(2048);
             entity.Property(x => x.ConversationUrl).HasMaxLength(2048);
@@ -112,7 +145,14 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
         {
             entity.ToTable("memory_links");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.Relation).HasMaxLength(64);
+            entity.Property(x => x.Id)
+                .HasConversion(id => id.Value, value => new MemoryLinkId(value));
+            entity.Property(x => x.FromMemoryId)
+                .HasConversion(id => id.Value, value => new MemoryId(value));
+            entity.Property(x => x.ToMemoryId)
+                .HasConversion(id => id.Value, value => new MemoryId(value));
+            entity.Property(x => x.Relation)
+                .HasMaxLength(64);
             entity.Property(x => x.Description).HasMaxLength(2000);
             entity.HasIndex(x => new { x.FromMemoryId, x.ToMemoryId }).IsUnique();
             entity.HasOne<MemoryEntry>()

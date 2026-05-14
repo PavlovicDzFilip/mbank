@@ -8,8 +8,8 @@ namespace MBank.Tests;
 
 internal sealed class TestDatabase : IAsyncDisposable
 {
-    public static readonly Guid UserId = Guid.Parse("11111111-1111-7111-8111-111111111111");
-    public static readonly Guid ProjectId = Guid.Parse("22222222-2222-7222-8222-222222222222");
+    public static readonly UserId UserId = new(Guid.Parse("11111111-1111-7111-8111-111111111111"));
+    public static readonly ProjectId ProjectId = new(Guid.Parse("22222222-2222-7222-8222-222222222222"));
     public const string ProjectToken = "mbp_test_project_token";
     public const string AdminToken = "test-admin-token";
 
@@ -57,17 +57,8 @@ internal sealed class TestDatabase : IAsyncDisposable
         await context.Database.ExecuteSqlRawAsync("DELETE FROM access_tokens");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM projects");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM users");
-        context.Users.Add(new UserAccount
-        {
-            Id = UserId,
-            Name = "Test User",
-            Email = "test@example.test"
-        });
-        context.Projects.Add(new Project
-        {
-            Id = ProjectId,
-            Name = "Test Project"
-        });
+        context.Users.Add(UserAccount.Create("Test User", "test@example.test", UserId));
+        context.Projects.Add(Project.Create("Test Project", ProjectId));
         var issuedToken = AccessToken.Create(
             UserId,
             ProjectId,

@@ -51,7 +51,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
-        var currentScope = scope.ServiceProvider.GetRequiredService<CurrentMemoryScope>();
+        var currentScope = scope.ServiceProvider.GetRequiredService<MemoryScopeProvider>();
         var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
 
         await service.RememberAsync(new RememberRequest(
@@ -66,13 +66,13 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             ]),
             CancellationToken.None);
 
-        var otherProject = new Project { Name = "Other Project" };
+        var otherProject = Project.Create("Other Project");
         db.Projects.Add(otherProject);
         await db.SaveChangesAsync();
-        currentScope.Current = new AuthenticatedMemoryScope(
+        currentScope.Set(new AuthenticatedMemoryScope(
             TestDatabase.UserId,
             otherProject.Id,
-            AccessTokenPermissions.Crud);
+            AccessTokenPermissions.Crud));
 
         var response = await service.GetTaskContextAsync(new TaskContextRequest(
             new TaskDescription(

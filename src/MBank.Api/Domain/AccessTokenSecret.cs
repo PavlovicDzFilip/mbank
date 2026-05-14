@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace MBank.Api.Domain;
 
+[DebuggerDisplay("{Value}")]
 public sealed record AccessTokenSecret
 {
     private const string TokenPrefix = "mbp_";

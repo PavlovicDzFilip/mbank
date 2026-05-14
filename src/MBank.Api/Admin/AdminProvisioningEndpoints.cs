@@ -38,27 +38,28 @@ public static class AdminProvisioningEndpoints
         MemoryDbContext db,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        UserAccount user;
+        try
         {
-            return Results.BadRequest(new { error = "User name is required." });
-        }
+            var email = UserAccount.NormalizeEmail(request.Email);
+            if (email is not null && await db.Users.AnyAsync(x => x.Email == email, cancellationToken))
+            {
+                return Results.Conflict(new { error = "A user with this email already exists." });
+            }
 
-        var email = NormalizeOptional(request.Email);
-        if (email is not null && await db.Users.AnyAsync(x => x.Email == email, cancellationToken))
-        {
-            return Results.Conflict(new { error = "A user with this email already exists." });
+            user = UserAccount.Create(request.Name, request.Email);
         }
-
-        var user = new UserAccount
+        catch (ArgumentException ex)
         {
-            Name = request.Name.Trim(),
-            Email = email
-        };
+            return Results.BadRequest(new { error = ex.Message });
+        }
 
         db.Users.Add(user);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Created($"/admin/users/{user.Id}", new UserResponse(user.Id, user.Name, user.Email, user.CreatedAt));
+        return Results.Created(
+            $"/admin/users/{user.Id.Value}",
+            new UserResponse(user.Id.Value, user.Name, user.Email, user.CreatedAt));
     }
 
     private static async Task<IResult> CreateProjectAsync(
@@ -66,26 +67,29 @@ public static class AdminProvisioningEndpoints
         MemoryDbContext db,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        string name;
+        try
         {
-            return Results.BadRequest(new { error = "Project name is required." });
+            name = Project.NormalizeName(request.Name);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
         }
 
-        var name = request.Name.Trim();
         if (await db.Projects.AnyAsync(x => x.Name == name, cancellationToken))
         {
             return Results.Conflict(new { error = "A project with this name already exists." });
         }
 
-        var project = new Project
-        {
-            Name = name
-        };
+        var project = Project.Create(name);
 
         db.Projects.Add(project);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Created($"/admin/projects/{project.Id}", new ProjectResponse(project.Id, project.Name, project.CreatedAt));
+        return Results.Created(
+            $"/admin/projects/{project.Id.Value}",
+            new ProjectResponse(project.Id.Value, project.Name, project.CreatedAt));
     }
 
     private static async Task<IResult> CreateProjectTokenAsync(
@@ -93,26 +97,34 @@ public static class AdminProvisioningEndpoints
         MemoryDbContext db,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        UserId userId;
+        ProjectId projectId;
+        string name;
+        try
         {
-            return Results.BadRequest(new { error = "Token name is required." });
+            userId = new UserId(request.UserId);
+            projectId = new ProjectId(request.ProjectId);
+            name = AccessToken.NormalizeName(request.Name);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
         }
 
-        var userExists = await db.Users.AnyAsync(x => x.Id == request.UserId, cancellationToken);
+        var userExists = await db.Users.AnyAsync(x => x.Id == userId, cancellationToken);
         if (!userExists)
         {
             return Results.NotFound(new { error = "User was not found." });
         }
 
-        var projectExists = await db.Projects.AnyAsync(x => x.Id == request.ProjectId, cancellationToken);
+        var projectExists = await db.Projects.AnyAsync(x => x.Id == projectId, cancellationToken);
         if (!projectExists)
         {
             return Results.NotFound(new { error = "Project was not found." });
         }
 
-        var name = request.Name.Trim();
         var duplicate = await db.AccessTokens.AnyAsync(
-            x => x.UserId == request.UserId && x.ProjectId == request.ProjectId && x.Name == name,
+            x => x.UserId == userId && x.ProjectId == projectId && x.Name == name,
             cancellationToken);
         if (duplicate)
         {
@@ -120,8 +132,8 @@ public static class AdminProvisioningEndpoints
         }
 
         var issuedToken = AccessToken.Create(
-            request.UserId,
-            request.ProjectId,
+            userId,
+            projectId,
             name,
             AccessTokenPermissions.Crud);
         db.AccessTokens.Add(issuedToken.AccessToken);
@@ -129,14 +141,14 @@ public static class AdminProvisioningEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created(
-            $"/admin/project-tokens/{issuedToken.AccessToken.Id}",
+            $"/admin/project-tokens/{issuedToken.AccessToken.Id.Value}",
             new ProjectTokenResponse(
-                issuedToken.AccessToken.Id,
-                issuedToken.AccessToken.UserId,
-                issuedToken.AccessToken.ProjectId,
+                issuedToken.AccessToken.Id.Value,
+                issuedToken.AccessToken.UserId.Value,
+                issuedToken.AccessToken.ProjectId.Value,
                 issuedToken.AccessToken.Name,
                 issuedToken.AccessToken.Permissions,
-                issuedToken.Secret,
+                issuedToken.Secret.Value,
                 issuedToken.AccessToken.CreatedAt));
     }
 
@@ -163,11 +175,6 @@ public static class AdminProvisioningEndpoints
         return Results.Json(
             new { error = "Admin provisioning requires Authorization: Bearer <admin-token>." },
             statusCode: StatusCodes.Status401Unauthorized);
-    }
-
-    private static string? NormalizeOptional(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
 

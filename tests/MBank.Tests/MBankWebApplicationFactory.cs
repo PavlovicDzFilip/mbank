@@ -59,18 +59,20 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
         {
             services.RemoveAll<DbContextOptions<MemoryDbContext>>();
             services.RemoveAll<IEmbeddingService>();
-            services.RemoveAll<CurrentMemoryScope>();
+            services.RemoveAll<MemoryScopeProvider>();
 
             services.AddDbContext<MemoryDbContext>(options =>
                 options.UseNpgsql(RequireDatabase().ConnectionString, npgsql => npgsql.UseVector()));
 
             services.AddScoped<IEmbeddingService, FakeEmbeddingService>();
-            services.AddScoped(_ => new CurrentMemoryScope
+            services.AddScoped(_ =>
             {
-                Current = new AuthenticatedMemoryScope(
+                var currentScope = new MemoryScopeProvider();
+                currentScope.Set(new AuthenticatedMemoryScope(
                     TestDatabase.UserId,
                     TestDatabase.ProjectId,
-                    AccessTokenPermissions.Crud)
+                    AccessTokenPermissions.Crud));
+                return currentScope;
             });
         });
     }

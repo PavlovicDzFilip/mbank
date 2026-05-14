@@ -12,7 +12,7 @@ public sealed class MemoryService(
     MemoryDbContext db,
     IEmbeddingService embeddings,
     AgentInstructionService agentInstructions,
-    CurrentMemoryScope currentScope)
+    MemoryScopeProvider currentScope)
 {
     private const double RrfK = 60;
     private const double PossibleMatchRawThreshold = 0.18;
@@ -38,14 +38,12 @@ public sealed class MemoryService(
         SourceRecord? source = null;
         if (request.Source is not null)
         {
-            source = new SourceRecord
-            {
-                SourceKind = NormalizeOptional(request.Source.SourceKind),
-                SourceText = NormalizeOptional(request.Source.SourceText),
-                SourceUrl = NormalizeOptional(request.Source.SourceUrl),
-                ConversationUrl = NormalizeOptional(request.Source.ConversationUrl),
-                MetadataJson = NormalizeOptional(request.Source.MetadataJson)
-            };
+            source = SourceRecord.Create(
+                request.Source.SourceKind,
+                request.Source.SourceText,
+                request.Source.SourceUrl,
+                request.Source.ConversationUrl,
+                request.Source.MetadataJson);
             db.SourceRecords.Add(source);
         }
 
@@ -59,20 +57,18 @@ public sealed class MemoryService(
             var searchText = BuildMemorySearchText(draft.Type, draft.Summary, draft.Subject, draft.SubjectKind, tags, request.Source?.SourceText);
             var vector = new Vector(await embeddings.GenerateEmbeddingAsync(searchText, cancellationToken));
 
-            var entry = new MemoryEntry
-            {
-                Type = draft.Type.Trim(),
-                Summary = draft.Summary.Trim(),
-                Subject = NormalizeOptional(draft.Subject),
-                SubjectKind = NormalizeOptional(draft.SubjectKind),
-                Tags = tags,
-                Confidence = Math.Clamp(draft.Confidence ?? 0.7, 0, 1),
-                SearchText = searchText,
-                Embedding = vector,
-                SourceRecordId = source?.Id,
-                UserId = scope.UserId,
-                ProjectId = scope.ProjectId
-            };
+            var entry = MemoryEntry.Create(
+                scope.UserId,
+                scope.ProjectId,
+                draft.Type,
+                draft.Summary,
+                draft.Subject,
+                draft.SubjectKind,
+                tags,
+                draft.Confidence ?? 0.7,
+                searchText,
+                vector,
+                source?.Id);
 
             var related = await FindSimilarMemoriesAsync(scope.ProjectId, vector, entry.Subject, entry.SubjectKind, 4, cancellationToken);
 
@@ -82,8 +78,8 @@ public sealed class MemoryService(
             foreach (var similar in related.Where(x => x.Distance <= 0.18))
             {
                 possibleConflicts.Add(new PossibleConflict(
-                    similar.Memory.Id,
-                    entry.Id,
+                    similar.Memory.Id.Value,
+                    entry.Id.Value,
                     similar.Memory.Summary,
                     BuildConflictReason(entry, similar.Memory),
                     SimilarityFromCosineDistance(similar.Distance)));
@@ -106,7 +102,7 @@ public sealed class MemoryService(
         var candidateLimit = Math.Max(limit * 4, 20);
         var vectorCandidateRows = await db.Memories
             .AsNoTracking()
-            .Where(x => x.ProjectId == scope.ProjectId && x.Status == "active" && x.Embedding != null)
+            .Where(x => x.ProjectId == scope.ProjectId && x.Status == MemoryEntry.ActiveStatus && x.Embedding != null)
             .OrderBy(x => x.Embedding!.CosineDistance(queryVector))
             .Take(candidateLimit)
             .Select(x => new
@@ -122,7 +118,7 @@ public sealed class MemoryService(
             : await db.Memories
                 .AsNoTracking()
                 .Where(x => x.ProjectId == scope.ProjectId
-                    && x.Status == "active"
+                    && x.Status == MemoryEntry.ActiveStatus
                     && x.SearchVector.Matches(EF.Functions.ToTsQuery("english", fullTextQuery)))
                 .OrderByDescending(x => x.SearchVector.Rank(
                     EF.Functions.ToTsQuery("english", fullTextQuery),
@@ -180,9 +176,10 @@ public sealed class MemoryService(
     public async Task<MemoryDetail?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         var scope = RequireScope();
+        var memoryId = new MemoryId(id);
         var memory = await db.Memories
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id && x.ProjectId == scope.ProjectId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == memoryId && x.ProjectId == scope.ProjectId, cancellationToken);
 
         if (memory is null)
         {
@@ -192,9 +189,10 @@ public sealed class MemoryService(
         SourceRecord? source = null;
         if (memory.SourceRecordId is not null)
         {
+            var sourceRecordId = memory.SourceRecordId.Value;
             source = await db.SourceRecords
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == memory.SourceRecordId, cancellationToken);
+                .FirstOrDefaultAsync(x => x.Id == sourceRecordId, cancellationToken);
         }
 
         var projectMemoryIds = db.Memories
@@ -202,19 +200,19 @@ public sealed class MemoryService(
             .Select(x => x.Id);
         var links = await db.MemoryLinks
             .AsNoTracking()
-            .Where(x => x.FromMemoryId == id || x.ToMemoryId == id)
+            .Where(x => x.FromMemoryId == memoryId || x.ToMemoryId == memoryId)
             .Where(x => projectMemoryIds.Contains(x.FromMemoryId) && projectMemoryIds.Contains(x.ToMemoryId))
             .ToListAsync(cancellationToken);
         var linkDetails = links
             .Select(x => new MemoryLinkDetail(
-                x.FromMemoryId == id ? x.ToMemoryId : x.FromMemoryId,
+                (x.FromMemoryId == memoryId ? x.ToMemoryId : x.FromMemoryId).Value,
                 x.Relation,
                 x.Description,
                 x.CreatedAt))
             .ToArray();
 
         return new MemoryDetail(
-            memory.Id,
+            memory.Id.Value,
             memory.Type,
             memory.Summary,
             memory.Subject,
@@ -244,7 +242,7 @@ public sealed class MemoryService(
             return new ReportConflictResponse(false, "Report at least two memory ids to record a conflict.");
         }
 
-        var ids = request.MemoryIds.Distinct().ToArray();
+        var ids = request.MemoryIds.Distinct().Select(x => new MemoryId(x)).ToArray();
         var memories = await db.Memories
             .Where(x => x.ProjectId == scope.ProjectId && ids.Contains(x.Id))
             .ToListAsync(cancellationToken);
@@ -263,22 +261,16 @@ public sealed class MemoryService(
                 var from = memories[i].Id;
                 var to = memories[j].Id;
                 var existing = await db.MemoryLinks.FirstOrDefaultAsync(
-                    x => x.FromMemoryId == from && x.ToMemoryId == to && x.Relation == "conflicts",
+                    x => x.FromMemoryId == from && x.ToMemoryId == to && x.Relation == MemoryLink.ConflictRelation,
                     cancellationToken);
 
                 if (existing is null)
                 {
-                    db.MemoryLinks.Add(new MemoryLink
-                    {
-                        FromMemoryId = from,
-                        ToMemoryId = to,
-                        Relation = "conflicts",
-                        Description = description
-                    });
+                    db.MemoryLinks.Add(MemoryLink.CreateConflict(from, to, description));
                 }
                 else if (!string.IsNullOrWhiteSpace(description) && !TextEquals(existing.Description, description))
                 {
-                    existing.Description = description;
+                    existing.ChangeDescription(description);
                 }
             }
         }
@@ -288,7 +280,7 @@ public sealed class MemoryService(
     }
 
     private async Task<List<(MemoryEntry Memory, double Distance)>> FindSimilarMemoriesAsync(
-        Guid projectId,
+        ProjectId projectId,
         Vector vector,
         string? subject,
         string? subjectKind,
@@ -297,9 +289,9 @@ public sealed class MemoryService(
     {
         var query = db.Memories
             .AsNoTracking()
-            .Where(x => x.ProjectId == projectId && x.Status == "active" && x.Embedding != null);
+            .Where(x => x.ProjectId == projectId && x.Status == MemoryEntry.ActiveStatus && x.Embedding != null);
 
-        if (!string.IsNullOrWhiteSpace(subject))
+        if (subject is not null)
         {
             query = query.Where(x => x.Subject == subject || x.SubjectKind == subjectKind);
         }
@@ -321,7 +313,7 @@ public sealed class MemoryService(
         IReadOnlyList<VectorCandidate> vectorCandidates,
         IReadOnlyList<TextCandidate> textCandidates)
     {
-        var fused = new Dictionary<Guid, HybridCandidateBuilder>();
+        var fused = new Dictionary<MemoryId, HybridCandidateBuilder>();
 
         for (var i = 0; i < vectorCandidates.Count; i++)
         {
@@ -348,7 +340,7 @@ public sealed class MemoryService(
     }
 
     private static HybridCandidateBuilder GetOrCreate(
-        Dictionary<Guid, HybridCandidateBuilder> fused,
+        Dictionary<MemoryId, HybridCandidateBuilder> fused,
         MemoryEntry memory)
     {
         if (!fused.TryGetValue(memory.Id, out var builder))
@@ -422,7 +414,7 @@ public sealed class MemoryService(
         var strength = scored.Score >= StrongMatchRawThreshold ? "strong" : "possible";
 
         return new MemoryMatch(
-            scored.Memory.Id,
+            scored.Memory.Id.Value,
             scored.Memory.Type,
             scored.Memory.Summary,
             scored.Memory.Subject,
@@ -479,8 +471,8 @@ public sealed class MemoryService(
         var conflicts = new List<PossibleConflict>();
 
         foreach (var group in scored
-            .Where(x => !string.IsNullOrWhiteSpace(x.Memory.Subject))
-            .GroupBy(x => x.Memory.Subject, StringComparer.OrdinalIgnoreCase))
+            .Where(x => x.Memory.Subject is not null)
+            .GroupBy(x => x.Memory.Subject!, StringComparer.OrdinalIgnoreCase))
         {
             var conflictLinks = group
                 .SelectMany(x => group, (left, right) => (Left: left.Memory, Right: right.Memory))
@@ -491,8 +483,8 @@ public sealed class MemoryService(
             foreach (var (left, right) in conflictLinks)
             {
                 conflicts.Add(new PossibleConflict(
-                    left.Id,
-                    right.Id,
+                    left.Id.Value,
+                    right.Id.Value,
                     left.Summary,
                     "Related memories may need clarification before implementation.",
                     0));
@@ -524,7 +516,7 @@ public sealed class MemoryService(
                     "warning",
                     TaskContextAttentionAction.Notice,
                     match.Memory.Summary,
-                    MemoryIds: [match.Memory.Id]);
+                    MemoryIds: [match.Memory.Id.Value]);
             }));
 
         if (string.IsNullOrWhiteSpace(request.WorkArea?.Subject))
@@ -552,7 +544,7 @@ public sealed class MemoryService(
                 TaskContextAttentionAction.Notice,
                 "Only possible memory matches were found.",
                 "Should any possible memory matches guide this task?",
-                possibleMatches.Select(x => x.Memory.Id).ToArray()));
+                possibleMatches.Select(x => x.Memory.Id.Value).ToArray()));
         }
 
         foreach (var conflict in conflicts)
@@ -580,13 +572,13 @@ public sealed class MemoryService(
 
     private static string BuildConflictAttentionSummary(PossibleConflict conflict, IReadOnlyList<ScoredMemory> strongMatches)
     {
-        var existing = strongMatches.FirstOrDefault(x => x.Memory.Id == conflict.ExistingMemoryId)?.Memory.Summary
+        var existing = strongMatches.FirstOrDefault(x => x.Memory.Id.Value == conflict.ExistingMemoryId)?.Memory.Summary
             ?? conflict.ExistingSummary;
         var current = conflict.NewMemoryId is null
             ? null
-            : strongMatches.FirstOrDefault(x => x.Memory.Id == conflict.NewMemoryId.Value)?.Memory.Summary;
+            : strongMatches.FirstOrDefault(x => x.Memory.Id.Value == conflict.NewMemoryId.Value)?.Memory.Summary;
 
-        if (string.IsNullOrWhiteSpace(current))
+        if (current is null)
         {
             return $"Conflicting memory may need clarification: {existing}";
         }
@@ -664,7 +656,7 @@ public sealed class MemoryService(
     private static StoredMemory ToStoredMemory(MemoryEntry entry)
     {
         return new StoredMemory(
-            entry.Id,
+            entry.Id.Value,
             entry.Type,
             entry.Summary,
             entry.Subject,

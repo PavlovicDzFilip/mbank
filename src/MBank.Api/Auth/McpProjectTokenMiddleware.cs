@@ -6,7 +6,7 @@ namespace MBank.Api.Auth;
 
 public sealed class McpProjectTokenMiddleware(RequestDelegate next)
 {
-    public async Task InvokeAsync(HttpContext httpContext, MemoryDbContext db, CurrentMemoryScope currentScope)
+    public async Task InvokeAsync(HttpContext httpContext, MemoryDbContext db, MemoryScopeProvider currentScope)
     {
         var token = ReadBearerToken(httpContext.Request);
         if (token is null)
@@ -15,20 +15,20 @@ public sealed class McpProjectTokenMiddleware(RequestDelegate next)
             return;
         }
 
-        var secret = AccessTokenSecret.FromPlainText(token);
+        var tokenHash = AccessTokenSecret.FromPlainText(token).Hash;
         var accessToken = await db.AccessTokens
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.TokenHash == secret.Hash && x.RevokedAt == null, httpContext.RequestAborted);
+            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash && x.RevokedAt == null, httpContext.RequestAborted);
         if (accessToken is null)
         {
             await WriteUnauthorizedAsync(httpContext, "Invalid or revoked MBank project access token.");
             return;
         }
 
-        currentScope.Current = new AuthenticatedMemoryScope(
+        currentScope.Set(new AuthenticatedMemoryScope(
             accessToken.UserId,
             accessToken.ProjectId,
-            accessToken.Permissions);
+            accessToken.Permissions));
         await next(httpContext);
     }
 
