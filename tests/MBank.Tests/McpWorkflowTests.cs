@@ -55,11 +55,20 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         var client = factory.CreateClient();
 
         var tools = await SendMcpRequestAsync(client, "tools/list", new JsonObject());
+        var startTaskTool = ResolveToolName(tools, "StartTask");
         var rememberTool = ResolveToolName(tools, "Remember");
         var getTaskContextTool = ResolveToolName(tools, "GetTaskContext");
         var getTool = ResolveToolName(tools, "Get");
         var reportConflictTool = ResolveToolName(tools, "ReportConflict");
         var checkOnboardingTool = ResolveToolName(tools, "CheckOnboarding");
+
+        var startTask = await CallToolAsync(client, startTaskTool, new JsonObject());
+        var startTaskContent = GetStructuredContent(startTask);
+        Assert.Contains(startTaskContent["rules"]!.AsArray(), x =>
+            x!["source"]!.GetValue<string>() == "canonical_instruction"
+            && x["text"]!.GetValue<string>().Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("current task", startTaskContent["summary"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(AgentInstructionService.LatestInstructionVersion, startTaskContent["onboarding"]!["latestVersion"]!.GetValue<string>());
 
         var remember = await CallToolAsync(client, rememberTool, new JsonObject
         {

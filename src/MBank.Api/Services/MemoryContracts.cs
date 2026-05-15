@@ -66,6 +66,17 @@ public sealed record TaskContextResponse(
     bool CanProceed,
     IReadOnlyList<TaskContextAttentionItem> AttentionItems);
 
+public sealed record StartTaskResponse(
+    string Summary,
+    IReadOnlyList<AgentRule> Rules,
+    OnboardingStatusResponse Onboarding,
+    string NextStep);
+
+public sealed record AgentRule(
+    string Text,
+    string Source,
+    Guid? MemoryId = null);
+
 public sealed record TaskContextAttentionItem(
     string Kind,
     TaskContextAttentionAction Action,

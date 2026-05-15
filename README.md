@@ -91,6 +91,7 @@ The porting script preserves memory, source, and link IDs, and adds the target `
 
 ## MCP Tools
 
+- `StartTask`: returns current MBank agent rules, working-style guidance, and instruction-file onboarding status for the current task.
 - `Remember`: stores durable product or implementation guidance as one or more atomic memories.
 - `GetTaskContext`: retrieves strong and possible memory matches for a structured task before planning or implementation.
 - `Get`: fetches one memory with source evidence and linked memories.
@@ -153,16 +154,23 @@ Noninteractive usage is available with `--yes` or `-Yes`, but repo instruction u
 Manual block:
 
 ```md
-<!-- mbank:start version="1.0.0" -->
+<!-- mbank:start version="1.0.3" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
 
-At the start of a new product, planning, implementation, debugging, or review task, call `get_task_context` with a structured task description before proposing a plan or making changes.
+At the start of a new product, planning, implementation, debugging, or review task:
+
+1. Call `start_task` to retrieve current MBank agent rules and working-style guidance for this task.
+2. Follow the returned rules for the current task.
+3. If MBank reports that agent instruction files are missing or outdated, ask the user before updating files or running the bootstrap script.
+4. Call `get_task_context` with a structured task description before proposing a plan or making changes.
 
 Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
 
 Use `get` to inspect full memory details when a retrieved memory needs source context.
+
+When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.
 
 Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.
 

@@ -43,7 +43,46 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains($"<!-- mbank:start version=\"{AgentInstructionService.LatestInstructionVersion}\" -->", block);
         Assert.Contains("## MBank Memory", block);
+        Assert.Contains("start_task", block);
         Assert.Contains("get_task_context", block);
+    }
+
+    [Fact]
+    public async Task StartTask_returns_canonical_rules_and_latest_working_style_guidance()
+    {
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
+        await service.RememberAsync(new RememberRequest(
+            [
+                new MemoryDraft(
+                    "preference",
+                    "The user prefers small, focused commits rather than large bundled commits.",
+                    "Small commit preference",
+                    "user_preference",
+                    ["working-style", "commits"],
+                    1),
+                new MemoryDraft(
+                    "product_preference",
+                    "MBank should make user working-style preferences easy for agents to retrieve alongside product and technical context at the start of tasks.",
+                    "Working-style memory retrieval",
+                    "product_area",
+                    ["working-style", "retrieval"],
+                    1)
+            ]),
+            CancellationToken.None);
+
+        var response = await service.StartTaskAsync(CancellationToken.None);
+
+        Assert.Contains(response.Rules, x =>
+            x.Source == "canonical_instruction"
+            && x.Text.Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.Rules, x =>
+            x.Source == "memory"
+            && x.Text.Contains("small, focused commits", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(response.Rules, x =>
+            x.Text.StartsWith("MBank should make user working-style preferences", StringComparison.Ordinal));
+        Assert.Equal("Call `get_task_context` with this task's title, description, kind, and work area before planning or implementing.", response.NextStep);
+        Assert.True(response.Onboarding.RequiresExplicitApproval);
     }
 
     [Fact]

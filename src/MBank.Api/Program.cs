@@ -43,7 +43,15 @@ builder.Services
     .AddMcpServer(options =>
     {
         options.ServerInstructions = """
-            MBank stores durable project memory for AI coding and product agents. At the start of any product, planning, implementation, debugging, or review task, call get_task_context before proposing a solution or making changes. Use remember only for durable product or implementation guidance that should matter in future sessions. Use get when a retrieved memory needs source evidence. Use report_conflict when memories disagree and surface the conflict to the user. Use check_onboarding to verify that repo agent instructions are installed and current. If MBank reports missing or outdated agent instruction files, notify the user and ask for explicit approval before updating files or running the bootstrap script.
+            MBank stores durable project memory and agent guidance for AI coding and product agents.
+            At the start of any product, planning, implementation, debugging, or review task,
+            call start_task and follow the returned rules for the current task.
+            Then call get_task_context before proposing a solution or making changes.
+            Use remember only for durable product or implementation guidance that should matter in future sessions.
+            Use get when a retrieved memory needs source evidence.
+            Use report_conflict when memories disagree and surface the conflict to the user.
+            Use check_onboarding to verify that repo agent instructions are installed and current.
+            If MBank reports missing or outdated agent instruction files, notify the user and ask for explicit approval before updating files or running the bootstrap script.
             """;
     })
     .WithHttpTransport(options => options.Stateless = true)

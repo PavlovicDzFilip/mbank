@@ -7,6 +7,15 @@ namespace MBank.Api.Mcp;
 [McpServerToolType]
 public static class MemoryTools
 {
+    [McpServerTool(ReadOnly = true)]
+    [Description("Begin a product, planning, implementation, debugging, or review task by retrieving current MBank agent rules and working-style guidance. Follow the returned rules for the current task, then call get_task_context for task-specific product and technical context. This tool never edits files; if instruction files are missing or outdated, ask the user before updating them or running bootstrap scripts.")]
+    public static Task<StartTaskResponse> StartTask(
+        MemoryService memoryService,
+        CancellationToken cancellationToken)
+    {
+        return memoryService.StartTaskAsync(cancellationToken);
+    }
+
     [McpServerTool(ReadOnly = false, Destructive = false)]
     [Description("Store durable product or implementation guidance that is likely to matter in future sessions. Do not store ordinary conversation, temporary reasoning, or information only relevant to the current response. Send short atomic memories; include source text when available.")]
     public static Task<RememberResponse> Remember(

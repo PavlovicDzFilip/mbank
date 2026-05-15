@@ -25,6 +25,53 @@ public sealed class MemoryService(
         "constraint"
     };
 
+    private static readonly string[] AgentGuidanceMemoryTypes =
+    [
+        "agent_guidance",
+        "working_style",
+        "working_style_preference",
+        "user_preference",
+        "collaboration_preference",
+        "implementation_preference",
+        "project_instruction",
+        "preference"
+    ];
+
+    private static readonly string[] DirectAgentGuidanceMemoryTypes =
+    [
+        "agent_guidance",
+        "working_style",
+        "working_style_preference",
+        "user_preference",
+        "collaboration_preference",
+        "implementation_preference",
+        "project_instruction"
+    ];
+
+    private static readonly string[] AgentGuidanceSubjectKinds =
+    [
+        "agent_guidance",
+        "working_style",
+        "user_preference",
+        "collaboration_preference",
+        "project_instruction",
+        "project-instructions"
+    ];
+
+    private static readonly HashSet<string> AgentGuidanceTags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "working-style",
+        "workflow",
+        "collaboration",
+        "permission",
+        "planning",
+        "autonomy",
+        "commits",
+        "review-agent",
+        "scope-control",
+        "simplicity"
+    };
+
     public async Task<RememberResponse> RememberAsync(RememberRequest request, CancellationToken cancellationToken)
     {
         var scope = RequireScope();
@@ -88,6 +135,37 @@ public sealed class MemoryService(
 
         await db.SaveChangesAsync(cancellationToken);
         return new RememberResponse(stored, possibleConflicts);
+    }
+
+    public async Task<StartTaskResponse> StartTaskAsync(CancellationToken cancellationToken)
+    {
+        var scope = RequireScope();
+        var guidanceMemories = await db.Memories
+            .AsNoTracking()
+            .Where(x => x.ProjectId == scope.ProjectId && x.Status == MemoryEntry.ActiveStatus)
+            .Where(x => AgentGuidanceMemoryTypes.Contains(x.Type)
+                || (x.SubjectKind != null && AgentGuidanceSubjectKinds.Contains(x.SubjectKind)))
+            .OrderByDescending(x => x.UpdatedAt)
+            .Take(50)
+            .ToListAsync(cancellationToken);
+
+        var canonicalRules = AgentInstructionService.TaskStartRules
+            .Select(x => new AgentRule(x, "canonical_instruction"));
+        var memoryRules = guidanceMemories
+            .Where(IsAgentGuidanceMemory)
+            .Take(12)
+            .Select(x => new AgentRule(x.Summary, "memory", x.Id.Value));
+
+        var rules = canonicalRules
+            .Concat(memoryRules)
+            .DistinctBy(x => NormalizeRuleKey(x.Text))
+            .ToArray();
+
+        return new StartTaskResponse(
+            "Loaded current MBank agent rules for this task. Instruction-file updates affect future task startup; use the returned rules now.",
+            rules,
+            agentInstructions.CheckOnboarding(),
+            "Call `get_task_context` with this task's title, description, kind, and work area before planning or implementing.");
     }
 
     public async Task<TaskContextResponse> GetTaskContextAsync(TaskContextRequest request, CancellationToken cancellationToken)
@@ -773,6 +851,33 @@ public sealed class MemoryService(
         return WarningTypes.Contains(left.Type)
             || WarningTypes.Contains(right.Type)
             || !string.Equals(left.Type, right.Type, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsAgentGuidanceMemory(MemoryEntry memory)
+    {
+        if (IsOneOf(memory.Type, DirectAgentGuidanceMemoryTypes)
+            || IsOneOf(memory.SubjectKind, AgentGuidanceSubjectKinds))
+        {
+            return true;
+        }
+
+        return string.Equals(memory.Type, "preference", StringComparison.OrdinalIgnoreCase)
+            && memory.Tags.Any(AgentGuidanceTags.Contains);
+    }
+
+    private static bool IsOneOf(string? value, IReadOnlyCollection<string> candidates)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+            && candidates.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeRuleKey(string text)
+    {
+        return string.Join(
+            " ",
+            text.Split([' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries))
+            .Trim()
+            .ToLowerInvariant();
     }
 
     private static string BuildConflictReason(MemoryEntry current, MemoryEntry existing)

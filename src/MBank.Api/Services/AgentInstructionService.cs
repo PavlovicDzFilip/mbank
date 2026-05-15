@@ -6,8 +6,20 @@ namespace MBank.Api.Services;
 public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration)
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
-    public const string LatestInstructionVersion = "1.0.2";
+    public const string LatestInstructionVersion = "1.0.3";
     public const string BootstrapScriptUrl = "https://mbank.dev/bootstrap-agent.sh";
+
+    public static readonly IReadOnlyList<string> TaskStartRules =
+    [
+        "Use the configured `mbank` MCP server proactively for durable project memory and guidance.",
+        "After `start_task`, call `get_task_context` with a structured task description before proposing a plan or making changes.",
+        "Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.",
+        "Use `get` to inspect full memory details when a retrieved memory needs source context.",
+        "When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.",
+        "Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.",
+        "Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.",
+        "If MBank reports that this instruction block is missing or outdated, ask the user before updating agent instruction files or running the bootstrap script. Do not modify agent instruction files without explicit user approval."
+    ];
 
     public static readonly string CanonicalInstructionBlock = $"""
         <!-- mbank:start version="{LatestInstructionVersion}" -->
@@ -15,7 +27,12 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
 
         Use the configured `mbank` MCP server proactively for durable project memory.
 
-        At the start of a new product, planning, implementation, debugging, or review task, call `get_task_context` with a structured task description before proposing a plan or making changes.
+        At the start of a new product, planning, implementation, debugging, or review task:
+
+        1. Call `start_task` to retrieve current MBank agent rules and working-style guidance for this task.
+        2. Follow the returned rules for the current task.
+        3. If MBank reports that agent instruction files are missing or outdated, ask the user before updating files or running the bootstrap script.
+        4. Call `get_task_context` with a structured task description before proposing a plan or making changes.
 
         Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
 

@@ -40,6 +40,20 @@ public sealed class AgentInstructionServiceTests : IDisposable
     }
 
     [Fact]
+    public void Instruction_block_directs_agents_to_start_task_before_task_context()
+    {
+        var service = CreateService();
+
+        var block = service.GetInstructionBlock();
+
+        Assert.Equal(AgentInstructionService.LatestInstructionVersion, block.Version);
+        Assert.Contains("start_task", block.Content);
+        Assert.Contains("get_task_context", block.Content);
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void CheckOnboarding_reports_outdated_versioned_block()
     {
         var oldBlock = AgentInstructionService.CanonicalInstructionBlock.Replace(
