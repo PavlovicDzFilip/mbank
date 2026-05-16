@@ -1,6 +1,5 @@
 using MBank.Api.Domain;
 using Microsoft.EntityFrameworkCore;
-using Pgvector.EntityFrameworkCore;
 
 namespace MBank.Api.Data;
 

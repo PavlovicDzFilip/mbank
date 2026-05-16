@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/MBank.AppHost/MBank.AppHost.csproj" />
     <Project Path="src/MBank.Api/MBank.Api.csproj" />
+    <Project Path="src/MBank.MigrationService/MBank.MigrationService.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MBank.Tests/MBank.Tests.csproj" />

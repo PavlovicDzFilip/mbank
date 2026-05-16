@@ -3,7 +3,6 @@ using MBank.Api.Auth;
 using MBank.Api.Data;
 using MBank.Api.Domain;
 using MBank.Api.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MBank.Tests;

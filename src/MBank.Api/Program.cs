@@ -5,7 +5,6 @@ using MBank.Api.Mcp;
 using MBank.Api.Options;
 using MBank.Api.Services;
 using Microsoft.EntityFrameworkCore;
-using Pgvector.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
