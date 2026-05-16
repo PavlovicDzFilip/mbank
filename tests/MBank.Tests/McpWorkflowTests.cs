@@ -67,7 +67,7 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         Assert.Contains(startTaskContent["rules"]!.AsArray(), x =>
             x!["source"]!.GetValue<string>() == "canonical_instruction"
             && x["text"]!.GetValue<string>().Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains("current task", startTaskContent["summary"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("this task", startTaskContent["summary"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(AgentInstructionService.LatestInstructionVersion, startTaskContent["onboarding"]!["latestVersion"]!.GetValue<string>());
 
         var remember = await CallToolAsync(client, rememberTool, new JsonObject
