@@ -17,7 +17,28 @@ MCP-first memory storage and retrieval for AI agents.
 - `OpenAI:ApiKey` configured through user secrets, environment-specific configuration, or another ASP.NET Core configuration provider.
 - `MBANK_ADMIN_TOKEN` configured as an environment variable.
 
-## Run Locally
+## Run Locally With Aspire
+
+Aspire is the preferred local runtime when running multiple MBank worktrees in parallel. Each worktree runs its own AppHost, pgvector/Postgres container, database volume, migration worker, API process, and randomly assigned endpoints.
+
+Configure the AppHost secrets once per worktree:
+
+```powershell
+dotnet user-secrets --project src\MBank.AppHost\MBank.AppHost.csproj set "Parameters:mbankAdminToken" "<admin-token>"
+dotnet user-secrets --project src\MBank.AppHost\MBank.AppHost.csproj set "Parameters:openaiApiKey" "<openai-api-key>"
+```
+
+Start the local runtime:
+
+```powershell
+dotnet run --project src\MBank.AppHost\MBank.AppHost.csproj
+```
+
+The Aspire dashboard shows the active API endpoint. The `migrate` resource applies EF Core migrations before the `api` resource starts.
+
+Production deployment does not use the local AppHost. Use `scripts\Deploy-MBankHetzner.ps1` for the current Hetzner deploy path so unrelated production services are not touched.
+
+## Run Locally With Docker Compose
 
 Start Postgres with pgvector:
 

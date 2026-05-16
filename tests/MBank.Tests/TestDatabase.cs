@@ -1,7 +1,6 @@
 using MBank.Api.Data;
 using MBank.Api.Domain;
 using Microsoft.EntityFrameworkCore;
-using Pgvector.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
 namespace MBank.Tests;

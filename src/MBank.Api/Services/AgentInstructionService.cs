@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Hosting;
 
 namespace MBank.Api.Services;
 
