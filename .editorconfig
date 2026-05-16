@@ -1,0 +1,12 @@
+root = true
+
+[*.cs]
+# Keep contract-required signatures intact while catching accidental unused implementation parameters.
+dotnet_code_quality_unused_parameters = non_public
+
+dotnet_diagnostic.IDE0060.severity = error
+
+dotnet_diagnostic.CS0162.severity = error
+dotnet_diagnostic.CS0168.severity = error
+dotnet_diagnostic.CS0219.severity = error
+dotnet_diagnostic.CS8321.severity = error

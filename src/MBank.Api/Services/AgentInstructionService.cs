@@ -66,7 +66,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
 
         var warnings = BuildWarnings(files);
         var status = BuildStatus(files);
-        var summary = BuildSummary(status, files);
+        var summary = BuildSummary(status);
 
         return new OnboardingStatusResponse(
             status,
@@ -189,7 +189,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         return "missing";
     }
 
-    private static string BuildSummary(string status, IReadOnlyList<AgentInstructionFileStatus> files)
+    private static string BuildSummary(string status)
     {
         return status switch
         {
