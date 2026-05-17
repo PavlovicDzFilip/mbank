@@ -357,6 +357,66 @@ public sealed class MemoryService(
         return new ReportConflictResponse(true, "Conflict report recorded.");
     }
 
+    public async Task<ResolveConflictResponse> ResolveConflictAsync(ResolveConflictRequest request, CancellationToken cancellationToken)
+    {
+        var scope = RequireScope();
+        var keptMemoryId = new MemoryId(request.KeptMemoryId);
+        var supersededMemoryIds = request.SupersededMemoryIds
+            .Distinct()
+            .Select(x => new MemoryId(x))
+            .ToArray();
+
+        if (supersededMemoryIds.Length == 0)
+        {
+            return new ResolveConflictResponse(false, "Resolve at least one superseded memory id.");
+        }
+
+        if (supersededMemoryIds.Contains(keptMemoryId))
+        {
+            return new ResolveConflictResponse(false, "The kept memory cannot also be superseded.");
+        }
+
+        var clarification = NormalizeOptional(request.Clarification);
+        if (clarification is null)
+        {
+            return new ResolveConflictResponse(false, "A clarification is required to resolve a conflict.");
+        }
+
+        var ids = supersededMemoryIds.Append(keptMemoryId).ToArray();
+        var memories = await db.Memories
+            .Where(x => x.ProjectId == scope.ProjectId && ids.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+        var memoryById = memories.ToDictionary(x => x.Id);
+
+        if (!memoryById.TryGetValue(keptMemoryId, out var keptMemory))
+        {
+            return new ResolveConflictResponse(false, "The kept memory must exist in the current project.");
+        }
+
+        if (keptMemory.Status != MemoryEntry.ActiveStatus)
+        {
+            return new ResolveConflictResponse(false, "The kept memory must be active.");
+        }
+
+        if (supersededMemoryIds.Any(x => !memoryById.ContainsKey(x)))
+        {
+            return new ResolveConflictResponse(false, "Every superseded memory must exist in the current project.");
+        }
+
+        foreach (var supersededMemoryId in supersededMemoryIds)
+        {
+            memoryById[supersededMemoryId].Supersede();
+            await UpsertSupersedesLinkAsync(keptMemoryId, supersededMemoryId, clarification, cancellationToken);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return new ResolveConflictResponse(
+            true,
+            "Conflict resolved. Superseded memories will no longer appear in normal retrieval.",
+            keptMemoryId.Value,
+            supersededMemoryIds.Select(x => x.Value).ToArray());
+    }
+
     private async Task<List<(MemoryEntry Memory, double Distance)>> FindSimilarMemoriesAsync(
         ProjectId projectId,
         Vector vector,
@@ -385,6 +445,39 @@ public sealed class MemoryService(
             .ToListAsync(cancellationToken);
 
         return results.Select(x => (x.Memory, x.Distance)).ToList();
+    }
+
+    private async Task UpsertSupersedesLinkAsync(
+        MemoryId keptMemoryId,
+        MemoryId supersededMemoryId,
+        string clarification,
+        CancellationToken cancellationToken)
+    {
+        var direct = await db.MemoryLinks.FirstOrDefaultAsync(
+            x => x.FromMemoryId == keptMemoryId && x.ToMemoryId == supersededMemoryId,
+            cancellationToken);
+        var reverse = await db.MemoryLinks.FirstOrDefaultAsync(
+            x => x.FromMemoryId == supersededMemoryId && x.ToMemoryId == keptMemoryId,
+            cancellationToken);
+
+        if (direct is not null)
+        {
+            direct.ChangeToSupersedes(keptMemoryId, supersededMemoryId, clarification);
+            if (reverse is not null)
+            {
+                db.MemoryLinks.Remove(reverse);
+            }
+
+            return;
+        }
+
+        if (reverse is not null)
+        {
+            reverse.ChangeToSupersedes(keptMemoryId, supersededMemoryId, clarification);
+            return;
+        }
+
+        db.MemoryLinks.Add(MemoryLink.CreateSupersedes(keptMemoryId, supersededMemoryId, clarification));
     }
 
     private static List<HybridCandidate> MergeCandidatesWithRrf(

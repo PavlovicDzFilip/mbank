@@ -141,6 +141,17 @@ public sealed record ReportConflictResponse(
     bool Recorded,
     string Message);
 
+public sealed record ResolveConflictRequest(
+    Guid KeptMemoryId,
+    IReadOnlyList<Guid> SupersededMemoryIds,
+    string Clarification);
+
+public sealed record ResolveConflictResponse(
+    bool Resolved,
+    string Message,
+    Guid? KeptMemoryId = null,
+    IReadOnlyList<Guid>? SupersededMemoryIds = null);
+
 public sealed record OnboardingStatusResponse(
     string Status,
     string Summary,

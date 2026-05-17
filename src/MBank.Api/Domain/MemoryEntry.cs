@@ -8,6 +8,7 @@ namespace MBank.Api.Domain;
 public sealed class MemoryEntry
 {
     public const string ActiveStatus = "active";
+    public const string SupersededStatus = "superseded";
 
     private MemoryEntry()
     {
@@ -73,6 +74,17 @@ public sealed class MemoryEntry
             Embedding = embedding,
             SourceRecordId = sourceRecordId
         };
+    }
+
+    public void Supersede()
+    {
+        if (Status == SupersededStatus)
+        {
+            return;
+        }
+
+        Status = SupersededStatus;
+        UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     private static string[] NormalizeTags(IReadOnlyList<string> tags)

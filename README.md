@@ -96,6 +96,7 @@ The porting script preserves memory, source, and link IDs, and adds the target `
 - `GetTaskContext`: retrieves strong and possible memory matches for a structured task before planning or implementation.
 - `Get`: fetches one memory with source evidence and linked memories.
 - `ReportConflict`: records that memories appear to conflict and should be clarified later.
+- `ResolveConflict`: marks clarified losing memories as superseded so normal retrieval no longer returns them, while preserving audit history.
 - `CheckOnboarding`: reports whether supported repo agent instruction files contain the current versioned MBank block.
 
 ## Agent Instruction Bootstrap
@@ -106,7 +107,7 @@ The bootstrap scripts fetch the canonical instruction block from a running MBank
 
 The bootstrap scripts only add or update content between `<!-- mbank:start ... -->` and `<!-- mbank:end -->`. They prompt before changing files by default.
 
-When the MBank instruction text changes, bump the canonical block version in the server so agents can detect stale repo instructions.
+When the MBank instruction text changes, bump the canonical block version in the server so agents can detect stale repo instructions. When MCP tools change, update the canonical agent instructions in the same slice.
 
 Placeholder public URL:
 
@@ -154,7 +155,7 @@ Noninteractive usage is available with `--yes` or `-Yes`, but repo instruction u
 Manual block:
 
 ```md
-<!-- mbank:start version="1.0.3" -->
+<!-- mbank:start version="1.0.4" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
@@ -173,6 +174,8 @@ Use `get` to inspect full memory details when a retrieved memory needs source co
 When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.
 
 Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.
+
+Use `resolve_conflict` when the user clarifies which conflicting memory should remain authoritative. This marks superseded memories so normal retrieval stops returning them while preserving audit history through direct `get`.
 
 Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
 

@@ -350,6 +350,77 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.Contains("proves the memory detail endpoint", detail.Source.SourceText);
     }
 
+    [Fact]
+    public async Task ResolveConflict_supersedes_losing_memory_without_removing_audit_detail()
+    {
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
+        var stored = await service.RememberAsync(new RememberRequest(
+            [
+                new MemoryDraft(
+                    "agent_guidance",
+                    "Use the current reproducible docker compose process for MBank infrastructure.",
+                    "Infrastructure launch",
+                    "agent_guidance",
+                    ["working-style", "launch"],
+                    1),
+                new MemoryDraft(
+                    "agent_guidance",
+                    "Use the obsolete one-off container process with the violetmarker sentinel.",
+                    "Infrastructure launch",
+                    "agent_guidance",
+                    ["working-style", "launch", "violetmarker"],
+                    1)
+            ]),
+            CancellationToken.None);
+        var keptMemoryId = stored.StoredMemories[0].Id;
+        var supersededMemoryId = stored.StoredMemories[1].Id;
+
+        await service.ReportConflictAsync(new ReportConflictRequest(
+            [keptMemoryId, supersededMemoryId],
+            "These launch memories disagree."),
+            CancellationToken.None);
+
+        var resolution = await service.ResolveConflictAsync(new ResolveConflictRequest(
+            keptMemoryId,
+            [supersededMemoryId],
+            "The user clarified that docker compose is the reproducible process."),
+            CancellationToken.None);
+
+        Assert.True(resolution.Resolved);
+        Assert.Equal(keptMemoryId, resolution.KeptMemoryId);
+        Assert.Contains(supersededMemoryId, resolution.SupersededMemoryIds!);
+
+        var startTask = await service.StartTaskAsync(CancellationToken.None);
+        Assert.Contains(startTask.Rules, x =>
+            x.MemoryId == keptMemoryId
+            && x.Text.Contains("docker compose", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(startTask.Rules, x => x.MemoryId == supersededMemoryId);
+
+        var context = await service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Check violetmarker launch guidance",
+                "Should agents use the violetmarker one-off container launch process?",
+                "implementation"),
+            new WorkArea("Infrastructure launch", "agent_guidance"),
+            Limit: 4), CancellationToken.None);
+
+        Assert.DoesNotContain(context.StrongMatches, x => x.Id == supersededMemoryId);
+        Assert.DoesNotContain(context.PossibleMatches, x => x.Id == supersededMemoryId);
+
+        var keptDetail = await service.GetAsync(keptMemoryId, CancellationToken.None);
+        var supersededDetail = await service.GetAsync(supersededMemoryId, CancellationToken.None);
+
+        Assert.NotNull(keptDetail);
+        Assert.NotNull(supersededDetail);
+        Assert.Equal(MemoryEntry.ActiveStatus, keptDetail.Status);
+        Assert.Equal(MemoryEntry.SupersededStatus, supersededDetail.Status);
+        Assert.Contains(keptDetail.Links, x =>
+            x.MemoryId == supersededMemoryId
+            && x.Relation == MemoryLink.SupersedesRelation
+            && x.Description!.Contains("docker compose", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static async Task SeedStandardMemoriesAsync(MemoryService service, bool includeMvpWarning = true)
     {
         var memories = new List<MemoryDraft>

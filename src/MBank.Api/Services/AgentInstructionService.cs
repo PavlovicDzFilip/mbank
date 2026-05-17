@@ -6,7 +6,7 @@ namespace MBank.Api.Services;
 public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration)
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
-    public const string LatestInstructionVersion = "1.0.3";
+    public const string LatestInstructionVersion = "1.0.4";
     public const string BootstrapScriptUrl = "https://mbank.dev/bootstrap-agent.sh";
 
     public static readonly IReadOnlyList<string> TaskStartRules =
@@ -17,6 +17,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         "Use `get` to inspect full memory details when a retrieved memory needs source context.",
         "When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.",
         "Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.",
+        "Use `resolve_conflict` when the user clarifies which conflicting memory should remain authoritative; this marks superseded memories so normal retrieval stops returning them.",
         "Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.",
         "If MBank reports that this instruction block is missing or outdated, ask the user before updating agent instruction files or running the bootstrap script. Do not modify agent instruction files without explicit user approval."
     ];
@@ -41,6 +42,8 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.
 
         Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.
+
+        Use `resolve_conflict` when the user clarifies which conflicting memory should remain authoritative. This marks superseded memories so normal retrieval stops returning them while preserving audit history through direct `get`.
 
         Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
 

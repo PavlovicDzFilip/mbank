@@ -50,6 +50,7 @@ builder.Services
             Use remember only for durable product or implementation guidance that should matter in future sessions.
             Use get when a retrieved memory needs source evidence.
             Use report_conflict when memories disagree and surface the conflict to the user.
+            Use resolve_conflict when the user clarifies which conflicting memory should remain authoritative.
             Use check_onboarding to verify that repo agent instructions are installed and current.
             If MBank reports missing or outdated agent instruction files, notify the user and ask for explicit approval before updating files or running the bootstrap script.
             """;

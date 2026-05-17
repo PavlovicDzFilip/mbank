@@ -60,6 +60,7 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         var getTaskContextTool = ResolveToolName(tools, "GetTaskContext");
         var getTool = ResolveToolName(tools, "Get");
         var reportConflictTool = ResolveToolName(tools, "ReportConflict");
+        var resolveConflictTool = ResolveToolName(tools, "ResolveConflict");
         var checkOnboardingTool = ResolveToolName(tools, "CheckOnboarding");
 
         var startTask = await CallToolAsync(client, startTaskTool, new JsonObject());
@@ -211,6 +212,59 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             x!["memoryId"]!.GetValue<Guid>() == warningId
             && x["relation"]!.GetValue<string>() == "conflicts"
             && x["description"]!.GetValue<string>().Contains("surface this pair", StringComparison.OrdinalIgnoreCase));
+
+        var resolution = await CallToolAsync(client, resolveConflictTool, new JsonObject
+        {
+            ["request"] = new JsonObject
+            {
+                ["keptMemoryId"] = decisionId,
+                ["supersededMemoryIds"] = new JsonArray(warningId),
+                ["clarification"] = "The user clarified that the decision is authoritative; the warning is obsolete."
+            }
+        });
+        var resolutionContent = GetStructuredContent(resolution);
+        Assert.True(resolutionContent["resolved"]!.GetValue<bool>());
+
+        var detailAfterResolution = await CallToolAsync(client, getTool, new JsonObject
+        {
+            ["id"] = decisionId
+        });
+        var detailAfterResolutionContent = GetStructuredContent(detailAfterResolution);
+        Assert.Contains(detailAfterResolutionContent["links"]!.AsArray(), x =>
+            x!["memoryId"]!.GetValue<Guid>() == warningId
+            && x["relation"]!.GetValue<string>() == "supersedes"
+            && x["description"]!.GetValue<string>().Contains("authoritative", StringComparison.OrdinalIgnoreCase));
+
+        var supersededDetail = await CallToolAsync(client, getTool, new JsonObject
+        {
+            ["id"] = warningId
+        });
+        Assert.Equal("superseded", GetStructuredContent(supersededDetail)["status"]!.GetValue<string>());
+
+        var contextAfterResolution = await CallToolAsync(client, getTaskContextTool, new JsonObject
+        {
+            ["request"] = new JsonObject
+            {
+                ["task"] = new JsonObject
+                {
+                    ["title"] = "Decide whether to add a dashboard after clarification",
+                    ["description"] = "A later agent session is considering dashboard, UI, auth, generic search, and enterprise features. Should it proceed before the MCP loop is proven?",
+                    ["kind"] = "product-planning"
+                },
+                ["workArea"] = new JsonObject
+                {
+                    ["subject"] = "MVP scope",
+                    ["subjectKind"] = "product_capability",
+                    ["modules"] = new JsonArray("MBank.Api", "MCP")
+                },
+                ["limit"] = 4
+            }
+        });
+        var contextAfterResolutionContent = GetStructuredContent(contextAfterResolution);
+        Assert.DoesNotContain(contextAfterResolutionContent["strongMatches"]!.AsArray(), x =>
+            x!["id"]!.GetValue<Guid>() == warningId);
+        Assert.DoesNotContain(contextAfterResolutionContent["attentionItems"]!.AsArray(), x =>
+            x!["kind"]!.GetValue<string>() == "conflict");
     }
 
     private static async Task<JsonObject> CallToolAsync(HttpClient client, string toolName, JsonObject arguments)

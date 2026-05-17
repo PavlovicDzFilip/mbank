@@ -49,8 +49,11 @@ public sealed class AgentInstructionServiceTests : IDisposable
         Assert.Equal(AgentInstructionService.LatestInstructionVersion, block.Version);
         Assert.Contains("start_task", block.Content);
         Assert.Contains("get_task_context", block.Content);
+        Assert.Contains("resolve_conflict", block.Content);
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
             x.Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("resolve_conflict", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

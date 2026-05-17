@@ -5,6 +5,7 @@ namespace MBank.Api.Domain;
 public sealed class MemoryLink
 {
     public const string ConflictRelation = "conflicts";
+    public const string SupersedesRelation = "supersedes";
 
     private MemoryLink()
     {
@@ -33,8 +34,27 @@ public sealed class MemoryLink
         };
     }
 
+    public static MemoryLink CreateSupersedes(MemoryId fromMemoryId, MemoryId toMemoryId, string? description)
+    {
+        return new MemoryLink
+        {
+            FromMemoryId = fromMemoryId,
+            ToMemoryId = toMemoryId,
+            Relation = SupersedesRelation,
+            Description = NormalizeOptional(description)
+        };
+    }
+
     public void ChangeDescription(string description)
     {
+        Description = NormalizeOptional(description);
+    }
+
+    public void ChangeToSupersedes(MemoryId fromMemoryId, MemoryId toMemoryId, string? description)
+    {
+        FromMemoryId = fromMemoryId;
+        ToMemoryId = toMemoryId;
+        Relation = SupersedesRelation;
         Description = NormalizeOptional(description);
     }
 

@@ -56,6 +56,16 @@ public static class MemoryTools
         return memoryService.ReportConflictAsync(request, cancellationToken);
     }
 
+    [McpServerTool(ReadOnly = false, Destructive = false)]
+    [Description("Resolve a clarified memory conflict by keeping the true memory, marking the others superseded, and linking the kept memory to the superseded memories. Superseded memories are hidden from normal retrieval but remain available by direct id for audit.")]
+    public static Task<ResolveConflictResponse> ResolveConflict(
+        MemoryService memoryService,
+        [Description("Conflict resolution with the memory to keep, memories to supersede, and the user's clarification.")] ResolveConflictRequest request,
+        CancellationToken cancellationToken)
+    {
+        return memoryService.ResolveConflictAsync(request, cancellationToken);
+    }
+
     [McpServerTool(ReadOnly = true)]
     [Description("Check whether supported repo agent instruction files contain the current versioned MBank onboarding block. This tool never edits files. If instructions are missing or outdated, notify the user and require explicit approval before updating files or running the bootstrap script.")]
     public static OnboardingStatusResponse CheckOnboarding(AgentInstructionService agentInstructions)
