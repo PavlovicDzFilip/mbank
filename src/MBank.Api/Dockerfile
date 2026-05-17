@@ -8,6 +8,8 @@ WORKDIR /src
 
 COPY global.json MBank.slnx ./
 COPY src/MBank.Api/MBank.Api.csproj src/MBank.Api/
+COPY src/MBank.AppHost/MBank.AppHost.csproj src/MBank.AppHost/
+COPY src/MBank.MigrationService/MBank.MigrationService.csproj src/MBank.MigrationService/
 COPY tests/MBank.Tests/MBank.Tests.csproj tests/MBank.Tests/
 RUN dotnet restore MBank.slnx
 
