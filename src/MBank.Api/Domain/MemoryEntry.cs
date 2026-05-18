@@ -87,6 +87,17 @@ public sealed class MemoryEntry
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    public void ChangeType(MemoryType type)
+    {
+        if (Type == type.Value)
+        {
+            return;
+        }
+
+        Type = type.Value;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     private static string[] NormalizeTags(IReadOnlyList<string> tags)
     {
         return tags

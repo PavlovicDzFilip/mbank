@@ -1,5 +1,4 @@
 using MBank.Api.Data;
-using MBank.MigrationService.CodeMigrations;
 using MBank.MigrationService.CodeMigrations.Engine;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -16,6 +15,8 @@ builder.Services.AddDbContext<MemoryDbContext>((services, options) =>
 
 builder.Services.AddDbContext<CodeMigrationDbContext>((services, options) =>
     options.UseNpgsql(services.GetRequiredService<NpgsqlConnection>()));
+
+builder.Services.AddScoped<CodeMigrationRunner>();
 
 var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())

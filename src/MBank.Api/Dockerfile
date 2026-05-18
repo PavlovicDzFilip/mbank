@@ -22,14 +22,11 @@ RUN dotnet publish src/MBank.Api/MBank.Api.csproj \
     -o /app/publish
 
 FROM build AS migration-build
-ENV PATH="${PATH}:/root/.dotnet/tools"
-RUN dotnet tool install --global dotnet-ef --version 10.0.0
-RUN dotnet ef migrations bundle \
-    --configuration Release \
-    --project src/MBank.Api/MBank.Api.csproj \
-    --startup-project src/MBank.Api/MBank.Api.csproj \
-    --force \
-    --output /app/migrate/mbank-migrate
+RUN dotnet publish src/MBank.MigrationService/MBank.MigrationService.csproj \
+    -c Release \
+    --no-restore \
+    --no-self-contained \
+    -o /app/migrate
 
 FROM mcr.microsoft.com/dotnet/aspnet:${ASPNET_VERSION} AS api
 WORKDIR /app
@@ -41,6 +38,5 @@ ENTRYPOINT ["dotnet", "MBank.Api.dll"]
 
 FROM mcr.microsoft.com/dotnet/aspnet:${ASPNET_VERSION} AS migrate
 WORKDIR /app
-COPY --from=migration-build /app/migrate/mbank-migrate ./mbank-migrate
-RUN chmod +x ./mbank-migrate
-ENTRYPOINT ["./mbank-migrate"]
+COPY --from=migration-build /app/migrate .
+ENTRYPOINT ["dotnet", "MBank.MigrationService.dll"]

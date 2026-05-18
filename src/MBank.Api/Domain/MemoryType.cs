@@ -63,6 +63,11 @@ public sealed class MemoryType : SmartEnum<MemoryType, string>
         "technical-rule",
         "A hard implementation rule, invariant, or coding convention agents must follow.");
 
+    public static readonly MemoryType TechnicalConvention = new(
+        nameof(TechnicalConvention),
+        "technical-convention",
+        "An established codebase or engineering practice that should guide implementation.");
+
     public static readonly MemoryType TechnicalPreference = new(
         nameof(TechnicalPreference),
         "technical-preference",
@@ -99,6 +104,11 @@ public sealed class MemoryType : SmartEnum<MemoryType, string>
         nameof(OperationalStatus),
         "operational-status",
         "Current operational, deployment, environment, or runtime state.");
+
+    public static readonly MemoryType OperationalProcedure = new(
+        nameof(OperationalProcedure),
+        "operational-procedure",
+        "A repeatable operational, deployment, environment, or runtime procedure.");
 
     public static readonly MemoryType AgentInstruction = new(
         nameof(AgentInstruction),
