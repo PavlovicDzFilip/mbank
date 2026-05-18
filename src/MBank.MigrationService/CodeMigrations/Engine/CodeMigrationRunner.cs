@@ -1,23 +1,22 @@
 using System.Reflection;
 using MBank.Api.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace MBank.MigrationService.CodeMigrations.Engine;
 
 internal sealed class CodeMigrationRunner(
-    CodeMigrationDbContext db,
-    IServiceScopeFactory serviceScopeFactory,
+    MemoryDbContext db,
+    IServiceProvider serviceProvider,
     ILogger<CodeMigrationRunner> logger)
 {
     private readonly Assembly _migrationAssembly = typeof(CodeMigrationRunner).Assembly;
 
     internal CodeMigrationRunner(
-        CodeMigrationDbContext db,
-        IServiceScopeFactory serviceScopeFactory,
+        MemoryDbContext db,
+        IServiceProvider serviceProvider,
         ILogger<CodeMigrationRunner> logger,
         Assembly migrationAssembly)
-        : this(db, serviceScopeFactory, logger)
+        : this(db, serviceProvider, logger)
     {
         _migrationAssembly = migrationAssembly;
     }
@@ -72,19 +71,10 @@ internal sealed class CodeMigrationRunner(
             migration.Id,
             migration.Type.Name);
 
-        await using var scope = serviceScopeFactory.CreateAsyncScope();
-
-        var mainDb = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
-        var migrationDb = scope.ServiceProvider.GetRequiredService<CodeMigrationDbContext>();
-
         await using var transaction =
-            await mainDb.Database.BeginTransactionAsync(cancellationToken);
+            await db.Database.BeginTransactionAsync(cancellationToken);
 
-        await migrationDb.Database.UseTransactionAsync(
-            transaction.GetDbTransaction(),
-            cancellationToken);
-
-        var alreadyApplied = await migrationDb.CodeMigrations
+        var alreadyApplied = await db.CodeMigrations
             .AnyAsync(x => x.Id == migration.Id, cancellationToken);
 
         if (alreadyApplied)
@@ -98,15 +88,14 @@ internal sealed class CodeMigrationRunner(
 
         var migrationInstance =
             (ICodeMigration)ActivatorUtilities.CreateInstance(
-                scope.ServiceProvider,
+                serviceProvider,
                 migration.Type);
 
         await migrationInstance.RunAsync();
 
-        migrationDb.CodeMigrations.Add(CodeMigration.Create(migration));
+        db.CodeMigrations.Add(CodeMigration.Create(migration.Id));
 
-        await mainDb.SaveChangesAsync(cancellationToken);
-        await migrationDb.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 

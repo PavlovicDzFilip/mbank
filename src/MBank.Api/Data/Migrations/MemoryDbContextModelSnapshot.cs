@@ -25,10 +25,23 @@ namespace MBank.Api.Data.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MBank.Api.Data.CodeMigration", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("AppliedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("__code_migrations", (string)null);
+                });
+
             modelBuilder.Entity("MBank.Api.Domain.AccessToken", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -74,7 +87,6 @@ namespace MBank.Api.Data.Migrations
             modelBuilder.Entity("MBank.Api.Domain.MemoryEntry", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<double>("Confidence")
@@ -170,7 +182,6 @@ namespace MBank.Api.Data.Migrations
             modelBuilder.Entity("MBank.Api.Domain.MemoryLink", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -204,7 +215,6 @@ namespace MBank.Api.Data.Migrations
             modelBuilder.Entity("MBank.Api.Domain.Project", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -229,7 +239,6 @@ namespace MBank.Api.Data.Migrations
             modelBuilder.Entity("MBank.Api.Domain.SourceRecord", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("ConversationUrl")
@@ -261,7 +270,6 @@ namespace MBank.Api.Data.Migrations
             modelBuilder.Entity("MBank.Api.Domain.UserAccount", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")

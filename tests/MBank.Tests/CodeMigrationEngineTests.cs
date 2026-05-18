@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MigrationService::MBank.MigrationService.CodeMigrations.Engine;
-using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace MBank.Tests;
@@ -44,7 +43,7 @@ public sealed class CodeMigrationEngineTests
         var descriptor = CodeMigrationDescriptor.Create(typeof(ValidCodeMigration));
         var before = DateTime.UtcNow;
 
-        var migration = CodeMigration.Create(descriptor);
+        var migration = CodeMigration.Create(descriptor.Id);
 
         Assert.Equal(descriptor.Id, migration.Id);
         Assert.Equal(DateTimeKind.Utc, migration.AppliedAt.Kind);
@@ -58,7 +57,7 @@ public sealed class CodeMigrationEngineTests
 
         await harness.RecordAppliedMigrationAsync<ValidCodeMigration>();
 
-        await using var db = harness.CreateCodeMigrationDbContext();
+        await using var db = harness.CreateDbContext();
         var entity = db.Model.FindEntityType(typeof(CodeMigration));
         var storedMigration = await db.CodeMigrations.SingleAsync();
 
@@ -163,7 +162,7 @@ public sealed class CodeMigrationEngineTests
         private readonly ServiceProvider _serviceProvider;
         private readonly AsyncServiceScope _runnerScope;
         private readonly CodeMigrationRunner _runner;
-        private readonly DbContextOptions<CodeMigrationDbContext> _codeMigrationOptions;
+        private readonly DbContextOptions<MemoryDbContext> _dbOptions;
 
         private CodeMigrationHarness(
             PostgreSqlContainer container,
@@ -171,13 +170,13 @@ public sealed class CodeMigrationEngineTests
             AsyncServiceScope runnerScope,
             CodeMigrationRunner runner,
             MigrationRunRecorder recorder,
-            DbContextOptions<CodeMigrationDbContext> codeMigrationOptions)
+            DbContextOptions<MemoryDbContext> dbOptions)
         {
             _container = container;
             _serviceProvider = serviceProvider;
             _runnerScope = runnerScope;
             _runner = runner;
-            _codeMigrationOptions = codeMigrationOptions;
+            _dbOptions = dbOptions;
             Recorder = recorder;
         }
 
@@ -193,14 +192,14 @@ public sealed class CodeMigrationEngineTests
             var recorder = new MigrationRunRecorder();
             var connectionString = container.GetConnectionString();
             var serviceProvider = BuildServiceProvider(connectionString, recorder);
-            var codeMigrationOptions = CreateCodeMigrationOptions(connectionString);
+            var dbOptions = CreateDbOptions(connectionString);
 
-            await EnsureLedgerTableExistsAsync(codeMigrationOptions);
+            await EnsureDatabaseExistsAsync(dbOptions);
 
             var runnerScope = serviceProvider.CreateAsyncScope();
             var runner = new CodeMigrationRunner(
-                runnerScope.ServiceProvider.GetRequiredService<CodeMigrationDbContext>(),
-                serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+                runnerScope.ServiceProvider.GetRequiredService<MemoryDbContext>(),
+                runnerScope.ServiceProvider,
                 runnerScope.ServiceProvider.GetRequiredService<ILogger<CodeMigrationRunner>>(),
                 typeof(CodeMigrationEngineTests).Assembly);
 
@@ -210,12 +209,12 @@ public sealed class CodeMigrationEngineTests
                 runnerScope,
                 runner,
                 recorder,
-                codeMigrationOptions);
+                dbOptions);
         }
 
-        public CodeMigrationDbContext CreateCodeMigrationDbContext()
+        public MemoryDbContext CreateDbContext()
         {
-            return new CodeMigrationDbContext(_codeMigrationOptions);
+            return new MemoryDbContext(_dbOptions);
         }
 
         public Task RunAsync()
@@ -225,21 +224,21 @@ public sealed class CodeMigrationEngineTests
 
         public async Task RecordAppliedMigrationAsync<TMigration>()
         {
-            await using var db = CreateCodeMigrationDbContext();
-            db.CodeMigrations.Add(CodeMigration.Create(CodeMigrationDescriptor.Create(typeof(TMigration))));
+            await using var db = CreateDbContext();
+            db.CodeMigrations.Add(CodeMigration.Create(CodeMigrationDescriptor.Create(typeof(TMigration)).Id));
             await db.SaveChangesAsync();
         }
 
         public async Task<bool> WasAppliedAsync<TMigration>()
         {
-            await using var db = CreateCodeMigrationDbContext();
+            await using var db = CreateDbContext();
             var migrationId = MigrationId<TMigration>();
             return await db.CodeMigrations.AnyAsync(migration => migration.Id == migrationId);
         }
 
         public async Task<int> AppliedCountAsync<TMigration>()
         {
-            await using var db = CreateCodeMigrationDbContext();
+            await using var db = CreateDbContext();
             var migrationId = MigrationId<TMigration>();
             return await db.CodeMigrations.CountAsync(migration => migration.Id == migrationId);
         }
@@ -267,26 +266,23 @@ public sealed class CodeMigrationEngineTests
             var services = new ServiceCollection();
             services.AddSingleton(recorder);
             services.AddLogging();
-            services.AddScoped(_ => new NpgsqlConnection(connectionString));
-            services.AddDbContext<MemoryDbContext>((serviceProvider, options) =>
-                options.UseNpgsql(serviceProvider.GetRequiredService<NpgsqlConnection>(), npgsql => npgsql.UseVector()));
-            services.AddDbContext<CodeMigrationDbContext>((serviceProvider, options) =>
-                options.UseNpgsql(serviceProvider.GetRequiredService<NpgsqlConnection>()));
+            services.AddDbContext<MemoryDbContext>(options =>
+                options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));
 
             return services.BuildServiceProvider(validateScopes: true);
         }
 
-        private static DbContextOptions<CodeMigrationDbContext> CreateCodeMigrationOptions(string connectionString)
+        private static DbContextOptions<MemoryDbContext> CreateDbOptions(string connectionString)
         {
-            return new DbContextOptionsBuilder<CodeMigrationDbContext>()
-                .UseNpgsql(connectionString)
+            return new DbContextOptionsBuilder<MemoryDbContext>()
+                .UseNpgsql(connectionString, npgsql => npgsql.UseVector())
                 .Options;
         }
 
-        private static async Task EnsureLedgerTableExistsAsync(
-            DbContextOptions<CodeMigrationDbContext> options)
+        private static async Task EnsureDatabaseExistsAsync(
+            DbContextOptions<MemoryDbContext> options)
         {
-            await using var db = new CodeMigrationDbContext(options);
+            await using var db = new MemoryDbContext(options);
             await db.Database.EnsureCreatedAsync();
         }
     }

@@ -27,17 +27,3 @@ public class CodeMigrationDescriptor(string id, Type type)
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 }
 
-public class CodeMigration
-{
-    public string Id { get; }
-    public DateTime AppliedAt { get; }
-
-    private CodeMigration(string id, DateTime appliedAt)
-    {
-        Id = id;
-        AppliedAt = appliedAt;
-    }
-
-    public static CodeMigration Create(CodeMigrationDescriptor migrationDescriptor) =>
-        new(migrationDescriptor.Id, DateTime.UtcNow);
-}

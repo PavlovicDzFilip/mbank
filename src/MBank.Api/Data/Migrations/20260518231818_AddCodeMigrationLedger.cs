@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace MBank.MigrationService.CodeMigrations.Engine.Migrations
+namespace MBank.Api.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class CreateCodeMigrationLedger : Migration
+    public partial class AddCodeMigrationLedger : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

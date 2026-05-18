@@ -17,6 +17,8 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
 
     public DbSet<MemoryLink> MemoryLinks => Set<MemoryLink>();
 
+    public DbSet<CodeMigration> CodeMigrations => Set<CodeMigration>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("vector");
@@ -162,6 +164,17 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
                 .WithMany()
                 .HasForeignKey(x => x.ToMemoryId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CodeMigration>(entity =>
+        {
+            entity.ToTable("__code_migrations");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id)
+                .HasMaxLength(300)
+                .IsRequired();
+            entity.Property(x => x.AppliedAt)
+                .IsRequired();
         });
     }
 }
