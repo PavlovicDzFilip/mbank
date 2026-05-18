@@ -2,19 +2,25 @@ using MBank.Api.Data;
 using MBank.MigrationService.CodeMigrations.Engine;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Pgvector;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("MemoryDb")
                        ?? throw new InvalidOperationException("ConnectionStrings:MemoryDb is required.");
 
-builder.Services.AddScoped(_ => new NpgsqlConnection(connectionString));
+builder.Services.AddSingleton(_ =>
+{
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+    dataSourceBuilder.UseVector();
+    return dataSourceBuilder.Build();
+});
 
 builder.Services.AddDbContext<MemoryDbContext>((services, options) =>
-    options.UseNpgsql(services.GetRequiredService<NpgsqlConnection>(), npgsql => npgsql.UseVector()));
+    options.UseNpgsql(services.GetRequiredService<NpgsqlDataSource>(), npgsql => npgsql.UseVector()));
 
 builder.Services.AddDbContext<CodeMigrationDbContext>((services, options) =>
-    options.UseNpgsql(services.GetRequiredService<NpgsqlConnection>()));
+    options.UseNpgsql(services.GetRequiredService<NpgsqlDataSource>()));
 
 builder.Services.AddScoped<CodeMigrationRunner>();
 
