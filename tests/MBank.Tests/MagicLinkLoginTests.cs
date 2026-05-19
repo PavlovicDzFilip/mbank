@@ -57,7 +57,7 @@ public sealed class MagicLinkLoginTests(MBankWebApplicationFactory factory)
         var callback = await client.GetAsync(link.PathAndQuery);
 
         Assert.Equal(HttpStatusCode.Redirect, callback.StatusCode);
-        Assert.Equal("/login?status=signed-in", callback.Headers.Location?.ToString());
+        Assert.Equal("/projects", callback.Headers.Location?.ToString());
         Assert.Contains(
             callback.Headers.GetValues("Set-Cookie"),
             value => value.StartsWith("MBank.Auth=", StringComparison.Ordinal));

@@ -25,14 +25,20 @@ public sealed class LoginModel(
 
     public string? SignedInEmail => User.FindFirst("email")?.Value;
 
-    public void OnGet(string? status = null)
+    public IActionResult OnGet(string? status = null)
     {
+        if (IsSignedIn)
+        {
+            return RedirectToPage("/Projects/Index");
+        }
+
         Message = status switch
         {
             "sent" => "Check your email for a sign-in link.",
-            "signed-in" => "You are signed in.",
             _ => null
         };
+
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)

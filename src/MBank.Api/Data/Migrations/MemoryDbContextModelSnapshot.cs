@@ -270,8 +270,6 @@ namespace MBank.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name");
-
                     b.ToTable("projects", (string)null);
                 });
 

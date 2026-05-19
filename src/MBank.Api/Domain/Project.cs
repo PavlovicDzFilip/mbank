@@ -25,6 +25,12 @@ public sealed class Project
         };
     }
 
+    public void Rename(string name)
+    {
+        Name = NormalizeName(name);
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public static string NormalizeName(string name)
     {
         return RequiredText(name, "Project name", 256, nameof(name));

@@ -54,7 +54,10 @@ builder.Services
         options.SlidingExpiration = true;
     });
 builder.Services.AddAuthorization();
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+{
+    options.Conventions.AuthorizeFolder("/Projects");
+});
 
 builder.Services.AddDbContext<MemoryDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));
@@ -63,6 +66,7 @@ builder.Services.AddScoped<IEmbeddingService, OpenAiEmbeddingService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddSingleton<AgentInstructionService>();
 builder.Services.AddScoped<MagicLinkAuthenticationService>();
+builder.Services.AddScoped<ProjectWorkspaceService>();
 builder.Services.AddScoped<MemoryService>();
 builder.Services.AddScoped<MemoryScopeProvider>();
 
@@ -91,12 +95,13 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => Results.Ok(new
+app.MapGet("/", (HttpContext httpContext) =>
 {
-    name = "MBank",
-    status = "running",
-    mcp = "/mcp"
-}));
+    var destination = httpContext.User.Identity?.IsAuthenticated == true
+        ? "/projects"
+        : "/login";
+    return Results.Redirect(destination);
+});
 
 app.MapGet("/onboarding/agent-instructions", (AgentInstructionService agentInstructions) =>
 {

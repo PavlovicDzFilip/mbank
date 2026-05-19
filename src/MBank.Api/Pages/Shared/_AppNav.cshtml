@@ -1,0 +1,16 @@
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <header class="app-nav workspace-nav">
+        <a class="brand-link" href="/projects">
+            <span class="brand-mark brand-mark-sm" aria-hidden="true">M</span>
+            <span class="brand-text">MBank</span>
+        </a>
+        <nav class="app-nav-links" aria-label="Account">
+            <a class="nav-link" asp-page="/Projects/Index">Projects</a>
+            <form method="post" action="/logout" class="inline-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-ghost btn-sm">Sign out</button>
+            </form>
+        </nav>
+    </header>
+}

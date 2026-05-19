@@ -1,0 +1,64 @@
+@page "/projects"
+@model MBank.Api.Pages.Projects.IndexModel
+@{
+    ViewData["Title"] = "Projects";
+}
+
+<main class="app-shell workspace">
+    <section class="workspace-frame">
+        <header class="workspace-header">
+            <div>
+                <p class="kicker">Workspace</p>
+                <h1>Projects</h1>
+                <p class="lede">Memory scopes for repos and agents.</p>
+            </div>
+            <button type="button" class="btn btn-primary" data-dialog-open="create-project-dialog">New project</button>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Error))
+        {
+            <div class="alert alert-error" role="alert">@Model.Error</div>
+        }
+
+        @if (Model.Projects.Count == 0)
+        {
+            <div class="empty-state">
+                <p>No projects yet.</p>
+                <button type="button" class="btn btn-ghost" data-dialog-open="create-project-dialog">Create your first project</button>
+            </div>
+        }
+        else
+        {
+            <ul class="data-list" aria-label="Your projects">
+                @foreach (var project in Model.Projects)
+                {
+                    <li>
+                        <a class="data-row" asp-page="/Projects/Detail" asp-route-id="@project.Id.Value">
+                            <span class="data-row-main">
+                                <span class="data-row-title">@project.Name</span>
+                                <span class="data-row-meta">Created @project.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                            </span>
+                            <span class="data-row-chevron" aria-hidden="true">›</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <dialog id="create-project-dialog" class="app-dialog" @(Model.ShowCreateProject ? "data-show-on-load" : null)>
+        <form method="post" asp-page-handler="Create" class="dialog-form">
+            <div class="dialog-head">
+                <h2>New project</h2>
+                <p class="dialog-copy">A project groups memories and MCP tokens for one codebase or product.</p>
+            </div>
+            <label class="field-label" asp-for="Name">Name</label>
+            <input asp-for="Name" autocomplete="off" placeholder="My repo" />
+            <span asp-validation-for="Name" class="field-error"></span>
+            <div class="dialog-actions">
+                <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+        </form>
+    </dialog>
+</main>

@@ -21,14 +21,17 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task WebApplicationFactory_starts_the_app()
+    public async Task Home_redirects_unauthenticated_users_to_login()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
 
         var response = await client.GetAsync("/");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("MBank", await response.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/login", response.Headers.Location?.ToString());
     }
 
     [Fact]

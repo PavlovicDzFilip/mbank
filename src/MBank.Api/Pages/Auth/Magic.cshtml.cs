@@ -36,6 +36,6 @@ public sealed class MagicModel(MagicLinkAuthenticationService magicLinks) : Page
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(identity));
 
-        return RedirectToPage("/Login", new { status = "signed-in" });
+        return RedirectToPage("/Projects/Index");
     }
 }

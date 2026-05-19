@@ -15,15 +15,13 @@ MCP-first memory storage and retrieval for AI agents.
 
 - .NET SDK 10.0.201 or compatible.
 - Docker Desktop running with the Linux engine enabled.
-- `OpenAI:ApiKey` configured through user secrets, environment-specific configuration, or another ASP.NET Core configuration provider.
-- `MBANK_ADMIN_TOKEN` configured as an environment variable.
-- SMTP configured through the `Smtp` configuration section.
+- AppHost user secrets configured for `Parameters:mbankAdminToken` and `Parameters:openaiApiKey`.
 
 ## Run Locally With Aspire
 
-Aspire is the preferred local runtime when running multiple MBank worktrees in parallel. Each worktree runs its own AppHost, pgvector/Postgres container, database volume, migration worker, API process, and randomly assigned endpoints.
+Aspire is the local runtime for MBank. Each worktree should run its own AppHost so Postgres, migrations, the API, Mailpit, and ports stay isolated.
 
-Configure the AppHost secrets once per worktree:
+Configure AppHost secrets once per worktree:
 
 ```powershell
 dotnet user-secrets --project src\MBank.AppHost\MBank.AppHost.csproj set "Parameters:mbankAdminToken" "<admin-token>"
@@ -36,11 +34,42 @@ Start the local runtime:
 dotnet run --project src\MBank.AppHost\MBank.AppHost.csproj
 ```
 
-The Aspire dashboard shows the active API and Mailpit endpoints. The `migrate` resource applies EF Core migrations before the `api` resource starts.
+The AppHost starts the Aspire dashboard, applies EF Core migrations through the `migrate` resource, then starts the `api` resource. Development magic-link email goes to the `mailpit` resource.
 
 Production deployment does not use the local AppHost. Use `scripts\Deploy-MBankHetzner.ps1` for the current Hetzner deploy path so unrelated production services are not touched.
 
-## Run Locally With Docker Compose
+### URLs, UI, and MCP
+
+Aspire assigns HTTP ports dynamically. Do not assume a fixed port such as `localhost:5221`; use the URLs shown in the Aspire dashboard for the current run.
+
+From the dashboard:
+
+| Resource | Use for |
+| --- | --- |
+| `api` HTTP endpoint | MBank base URL (`/`, `/login`, `/projects`, `/mcp`, admin routes) |
+| `mailpit` HTTP endpoint | Reading magic-link sign-in emails in development |
+
+Common paths on the `api` base URL:
+
+- `/` redirects to `/login`, or to `/projects` when you are already signed in.
+- `/login` is the magic-link sign-in screen.
+- `/projects` is the signed-in project workspace.
+- `/mcp` is the MCP endpoint.
+
+Example MCP client configuration (replace the host with the current `api` HTTP endpoint from the dashboard):
+
+```toml
+[mcp_servers.mbank]
+enabled = true
+url = "http://127.0.0.1:<api-port>/mcp"
+bearer_token_env_var = "MBANK_PROJECT_TOKEN"
+```
+
+Mailpit's web UI and HTTP API are listed in the Aspire dashboard, which lets local automation verify that magic-link emails were received without mailbox credentials.
+
+## Alternative: Docker Compose and standalone API
+
+Use this only when you intentionally want to run the API outside AppHost, for example while working with `scripts\Port-LocalMemories.ps1` or other compose-based tooling.
 
 Start Postgres with pgvector:
 
@@ -54,28 +83,14 @@ Apply the EF schema:
 dotnet ef database update --project src\MBank.Api\MBank.Api.csproj --startup-project src\MBank.Api\MBank.Api.csproj
 ```
 
-Run the MCP server:
+Run the API with the `http` launch profile:
 
 ```powershell
 $env:MBANK_ADMIN_TOKEN = "<admin-token>"
-dotnet run --project src\MBank.Api\MBank.Api.csproj
+dotnet run --project src\MBank.Api\MBank.Api.csproj --launch-profile http
 ```
 
-The MCP endpoint is available at:
-
-```text
-http://localhost:5221/mcp
-```
-
-The default launch profile uses `http://localhost:5221`. The root endpoint returns the active status payload.
-
-The login screen is available at:
-
-```text
-http://localhost:5221/login
-```
-
-When running through AppHost, the API sends development magic-link email to the Mailpit resource. Mailpit's web UI and HTTP API are shown in the Aspire dashboard, which lets local automation verify that magic-link emails were received without mailbox credentials.
+That profile binds to `http://localhost:5221`. The same paths listed above apply on that base URL.
 
 ## Provisioning
 
@@ -93,16 +108,7 @@ Available endpoints:
 
 Project tokens are returned once when created. Store only the returned token in client configuration; MBank stores its hash plus non-secret display prefix/suffix metadata.
 
-Example Codex repo-scoped MCP configuration:
-
-```toml
-[mcp_servers.mbank]
-enabled = true
-url = "http://localhost:5221/mcp"
-bearer_token_env_var = "MBANK_PROJECT_TOKEN"
-```
-
-Set `MBANK_PROJECT_TOKEN` to the project token created through the admin endpoint. `/mcp` rejects requests without a valid project token.
+Set `MBANK_PROJECT_TOKEN` to a project token created in the UI or through the admin endpoint. `/mcp` rejects requests without a valid project token. Point your MCP client at `<api-base-url>/mcp` (see Aspire dashboard when running locally).
 
 ## Local Memory Porting
 
@@ -154,24 +160,14 @@ less bootstrap-agent.sh
 sh bootstrap-agent.sh
 ```
 
-Local development usage:
+Local development usage (use the `api` HTTP URL from the Aspire dashboard as `-ServerUrl` / `--server-url`):
 
 ```powershell
-.\scripts\bootstrap-agent.ps1 -Client codex
+.\scripts\bootstrap-agent.ps1 -Client codex -ServerUrl http://127.0.0.1:<api-port>
 ```
 
 ```bash
-sh scripts/bootstrap-agent.sh --client codex
-```
-
-If MBank is running somewhere other than `http://localhost:5221`, pass the server URL:
-
-```powershell
-.\scripts\bootstrap-agent.ps1 -Client codex -ServerUrl http://localhost:5222
-```
-
-```bash
-sh scripts/bootstrap-agent.sh --client codex --server-url http://localhost:5222
+sh scripts/bootstrap-agent.sh --client codex --server-url http://127.0.0.1:<api-port>
 ```
 
 Supported clients:

@@ -1,0 +1,159 @@
+@page "/projects/{id:guid}"
+@model MBank.Api.Pages.Projects.DetailModel
+@{
+    ViewData["Title"] = Model.Project?.Name ?? "Project";
+    var activeTokenCount = Model.Tokens.Count(x => x.RevokedAt is null);
+}
+
+<main class="app-shell workspace">
+    <section class="workspace-frame">
+        @if (Model.Project is null)
+        {
+            <div class="alert alert-error" role="alert">Project not found.</div>
+        }
+        else
+        {
+            <header class="workspace-header workspace-header-stack">
+                <nav class="breadcrumb" aria-label="Breadcrumb">
+                    <a asp-page="/Projects/Index">Projects</a>
+                    <span aria-hidden="true">/</span>
+                    <span>@Model.Project.Name</span>
+                </nav>
+                <div class="workspace-title-row">
+                    <div>
+                        <h1>@Model.Project.Name</h1>
+                        <p class="lede">
+                            Created @Model.Project.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")
+                            · @activeTokenCount active token@(activeTokenCount == 1 ? "" : "s")
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Error))
+            {
+                <div class="alert alert-error" role="alert">@Model.Error</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Model.IssuedToken))
+            {
+                <div class="alert alert-success token-banner" role="status">
+                    <div>
+                        <p class="alert-title">Copy this token now.</p>
+                        <p class="alert-copy">It will not be shown again. Store it in your MCP client config.</p>
+                    </div>
+                    <div class="token-banner-code">
+                        <code id="issued-token-value">@Model.IssuedToken</code>
+                        <button type="button" class="btn btn-ghost btn-sm" data-copy-target="issued-token-value">Copy</button>
+                    </div>
+                </div>
+            }
+
+            <section class="workspace-section">
+                <div class="section-toolbar">
+                    <div>
+                        <h2 class="section-title">Access tokens</h2>
+                        <p class="section-copy">MCP credentials scoped to you and this project.</p>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" data-dialog-open="create-token-dialog">New token</button>
+                </div>
+
+                @if (Model.Tokens.Count == 0)
+                {
+                    <p class="empty-inline">No tokens yet.</p>
+                }
+                else
+                {
+                    <ul class="data-list data-list-dense">
+                        @foreach (var token in Model.Tokens)
+                        {
+                            var revokeDialogId = $"revoke-token-{token.Id.Value}";
+                            <li class="token-item">
+                                <div class="token-item-main">
+                                    <span class="data-row-title">@token.Name</span>
+                                    <span class="token-mask">@token.TokenPrefix&hellip;@token.TokenSuffix</span>
+                                </div>
+                                <span class="token-item-meta">@token.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                @if (token.RevokedAt is not null)
+                                {
+                                    <span class="badge badge-muted">Revoked</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-live">Active</span>
+                                    <button type="button" class="btn btn-ghost btn-sm" data-dialog-open="@revokeDialogId">Revoke</button>
+                                    <dialog id="@revokeDialogId" class="app-dialog">
+                                        <form method="post" asp-page-handler="RevokeToken" class="dialog-form">
+                                            <input type="hidden" name="tokenId" value="@token.Id.Value" />
+                                            <div class="dialog-head">
+                                                <h2>Revoke token?</h2>
+                                                <p class="dialog-copy">
+                                                    <strong>@token.Name</strong> will stop working in MCP clients immediately.
+                                                </p>
+                                            </div>
+                                            <div class="dialog-actions">
+                                                <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
+                                                <button type="submit" class="btn btn-danger">Revoke</button>
+                                            </div>
+                                        </form>
+                                    </dialog>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+
+            <details class="disclosure" @(Model.OpenSettings ? "open" : null)>
+                <summary>Project settings</summary>
+                <div class="disclosure-body">
+                    <form method="post" asp-page-handler="Rename" class="inline-form-stack">
+                        <label class="field-label" asp-for="Name">Display name</label>
+                        <div class="inline-field-row">
+                            <input asp-for="Name" autocomplete="off" />
+                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </details>
+
+            <details class="disclosure disclosure-danger">
+                <summary>Danger zone</summary>
+                <div class="disclosure-body">
+                    <p class="section-copy">Permanently deletes this project, its tokens, and all stored memories.</p>
+                    <button type="button" class="btn btn-danger btn-sm" data-dialog-open="delete-project-dialog">Delete project</button>
+                </div>
+            </details>
+
+            <dialog id="create-token-dialog" class="app-dialog" @(Model.OpenCreateTokenDialog ? "data-show-on-load" : null)>
+                <form method="post" asp-page-handler="CreateToken" class="dialog-form">
+                    <div class="dialog-head">
+                        <h2>New access token</h2>
+                        <p class="dialog-copy">Use a descriptive name so you can tell tokens apart later.</p>
+                    </div>
+                    <label class="field-label" asp-for="TokenName">Name</label>
+                    <input asp-for="TokenName" autocomplete="off" placeholder="Codex repo token" />
+                    <div class="dialog-actions">
+                        <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create token</button>
+                    </div>
+                </form>
+            </dialog>
+
+            <dialog id="delete-project-dialog" class="app-dialog">
+                <form method="post" asp-page-handler="Delete" class="dialog-form">
+                    <div class="dialog-head">
+                        <h2>Delete project?</h2>
+                        <p class="dialog-copy">
+                            This permanently deletes <strong>@Model.Project.Name</strong> and everything inside it.
+                        </p>
+                    </div>
+                    <div class="dialog-actions">
+                        <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
+                        <button type="submit" class="btn btn-danger">Delete project</button>
+                    </div>
+                </form>
+            </dialog>
+        }
+    </section>
+</main>

@@ -48,7 +48,6 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
                 .HasConversion(id => id.Value, value => new ProjectId(value));
             entity.Property(x => x.Name)
                 .HasMaxLength(256);
-            entity.HasIndex(x => x.Name);
         });
 
         modelBuilder.Entity<ProjectMembership>(entity =>
