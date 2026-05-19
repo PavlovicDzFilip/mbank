@@ -46,7 +46,7 @@ builder.Services
             At the start of any product, planning, implementation, debugging, or review task,
             call start_task and follow the returned rules for the current task.
             Then call get_task_context before proposing a solution or making changes.
-            Use remember only for durable product or implementation guidance that should matter in future sessions, and use only valid MemoryType values returned by start_task.
+            Use remember only for durable product or implementation guidance that should matter in future sessions, and use only valid MemoryType values returned by describe_memory_types.
             Use get when a retrieved memory needs source evidence.
             Use report_conflict when memories disagree and surface the conflict to the user.
             Use resolve_conflict when the user clarifies which conflicting memory should remain authoritative.

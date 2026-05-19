@@ -64,6 +64,16 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         var resolveConflictTool = ResolveToolName(tools, "ResolveConflict");
         var checkOnboardingTool = ResolveToolName(tools, "CheckOnboarding");
 
+        var rememberInputSchema = ResolveTool(tools, rememberTool)["inputSchema"]!.AsObject();
+        var memoryTypeSchema = rememberInputSchema["properties"]!["request"]!["properties"]!["memories"]!["items"]!["properties"]!["type"]!.AsObject();
+        Assert.Equal("string", memoryTypeSchema["type"]!.GetValue<string>());
+        Assert.Contains(memoryTypeSchema["enum"]!.AsArray(), x =>
+            x!.GetValue<string>() == "product-decision");
+        Assert.Contains(memoryTypeSchema["enum"]!.AsArray(), x =>
+            x!.GetValue<string>() == "technical-rule");
+        Assert.Contains(memoryTypeSchema["enum"]!.AsArray(), x =>
+            x!.GetValue<string>() == "agent-instruction");
+
         var startTask = await CallToolAsync(client, startTaskTool, new JsonObject());
         var startTaskContent = GetStructuredContent(startTask);
         Assert.Contains(startTaskContent["rules"]!.AsArray(), x =>
@@ -377,6 +387,14 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
 
         Assert.True(match is not null, $"MCP tool for {methodName} was not advertised. Tools: {string.Join(", ", tools.Select(x => x!["name"]!.GetValue<string>()))}");
         return match;
+    }
+
+    private static JsonObject ResolveTool(JsonObject toolsResponse, string toolName)
+    {
+        var tools = toolsResponse["result"]!["tools"]!.AsArray();
+        return tools
+            .Select(x => x!.AsObject())
+            .Single(x => x["name"]!.GetValue<string>() == toolName);
     }
 
     private static string ToSnakeCase(string name)

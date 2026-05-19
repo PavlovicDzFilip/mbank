@@ -7,6 +7,36 @@ public sealed record RememberRequest(
     IReadOnlyList<MemoryDraft> Memories,
     SourceDraft? Source = null);
 
+public sealed record RememberToolRequest(
+    IReadOnlyList<MemoryDraftInput> Memories,
+    SourceDraft? Source = null)
+{
+    public RememberRequest ToRememberRequest()
+    {
+        return new RememberRequest(
+            Memories.Select(x => x.ToMemoryDraft()).ToArray(),
+            Source);
+    }
+}
+
+public sealed record MemoryDraftInput(
+    MemoryTypeValue Type,
+    string Summary,
+    string? Subject = null,
+    IReadOnlyList<string>? Tags = null,
+    double? Confidence = null)
+{
+    public MemoryDraft ToMemoryDraft()
+    {
+        return new MemoryDraft(
+            Type.ToMemoryType(),
+            Summary,
+            Subject,
+            Tags,
+            Confidence);
+    }
+}
+
 public sealed record MemoryDraft(
     MemoryType Type,
     string Summary,
@@ -90,6 +120,121 @@ public enum TaskContextAttentionAction
 
     [JsonStringEnumMemberName("ask_user")]
     AskUser
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<MemoryTypeValue>))]
+public enum MemoryTypeValue
+{
+    [JsonStringEnumMemberName("product-strategy")]
+    ProductStrategy,
+
+    [JsonStringEnumMemberName("product-decision")]
+    ProductDecision,
+
+    [JsonStringEnumMemberName("product-reasoning")]
+    ProductReasoning,
+
+    [JsonStringEnumMemberName("product-requirement")]
+    ProductRequirement,
+
+    [JsonStringEnumMemberName("product-constraint")]
+    ProductConstraint,
+
+    [JsonStringEnumMemberName("product-risk")]
+    ProductRisk,
+
+    [JsonStringEnumMemberName("product-open-question")]
+    ProductOpenQuestion,
+
+    [JsonStringEnumMemberName("technical-architecture")]
+    TechnicalArchitecture,
+
+    [JsonStringEnumMemberName("technical-decision")]
+    TechnicalDecision,
+
+    [JsonStringEnumMemberName("technical-reasoning")]
+    TechnicalReasoning,
+
+    [JsonStringEnumMemberName("technical-rule")]
+    TechnicalRule,
+
+    [JsonStringEnumMemberName("technical-convention")]
+    TechnicalConvention,
+
+    [JsonStringEnumMemberName("technical-preference")]
+    TechnicalPreference,
+
+    [JsonStringEnumMemberName("technical-constraint")]
+    TechnicalConstraint,
+
+    [JsonStringEnumMemberName("technical-risk")]
+    TechnicalRisk,
+
+    [JsonStringEnumMemberName("technical-open-question")]
+    TechnicalOpenQuestion,
+
+    [JsonStringEnumMemberName("implementation-result")]
+    ImplementationResult,
+
+    [JsonStringEnumMemberName("validation-result")]
+    ValidationResult,
+
+    [JsonStringEnumMemberName("operational-status")]
+    OperationalStatus,
+
+    [JsonStringEnumMemberName("operational-procedure")]
+    OperationalProcedure,
+
+    [JsonStringEnumMemberName("agent-instruction")]
+    AgentInstruction,
+
+    [JsonStringEnumMemberName("project-policy")]
+    ProjectPolicy,
+
+    [JsonStringEnumMemberName("user-preference")]
+    UserPreference,
+
+    [JsonStringEnumMemberName("collaboration-preference")]
+    CollaborationPreference,
+
+    [JsonStringEnumMemberName("note")]
+    Note
+}
+
+public static class MemoryTypeValueExtensions
+{
+    public static MemoryType ToMemoryType(this MemoryTypeValue value)
+    {
+        return value switch
+        {
+            MemoryTypeValue.ProductStrategy => MemoryType.ProductStrategy,
+            MemoryTypeValue.ProductDecision => MemoryType.ProductDecision,
+            MemoryTypeValue.ProductReasoning => MemoryType.ProductReasoning,
+            MemoryTypeValue.ProductRequirement => MemoryType.ProductRequirement,
+            MemoryTypeValue.ProductConstraint => MemoryType.ProductConstraint,
+            MemoryTypeValue.ProductRisk => MemoryType.ProductRisk,
+            MemoryTypeValue.ProductOpenQuestion => MemoryType.ProductOpenQuestion,
+            MemoryTypeValue.TechnicalArchitecture => MemoryType.TechnicalArchitecture,
+            MemoryTypeValue.TechnicalDecision => MemoryType.TechnicalDecision,
+            MemoryTypeValue.TechnicalReasoning => MemoryType.TechnicalReasoning,
+            MemoryTypeValue.TechnicalRule => MemoryType.TechnicalRule,
+            MemoryTypeValue.TechnicalConvention => MemoryType.TechnicalConvention,
+            MemoryTypeValue.TechnicalPreference => MemoryType.TechnicalPreference,
+            MemoryTypeValue.TechnicalConstraint => MemoryType.TechnicalConstraint,
+            MemoryTypeValue.TechnicalRisk => MemoryType.TechnicalRisk,
+            MemoryTypeValue.TechnicalOpenQuestion => MemoryType.TechnicalOpenQuestion,
+            MemoryTypeValue.ImplementationResult => MemoryType.ImplementationResult,
+            MemoryTypeValue.ValidationResult => MemoryType.ValidationResult,
+            MemoryTypeValue.OperationalStatus => MemoryType.OperationalStatus,
+            MemoryTypeValue.OperationalProcedure => MemoryType.OperationalProcedure,
+            MemoryTypeValue.AgentInstruction => MemoryType.AgentInstruction,
+            MemoryTypeValue.ProjectPolicy => MemoryType.ProjectPolicy,
+            MemoryTypeValue.UserPreference => MemoryType.UserPreference,
+            MemoryTypeValue.CollaborationPreference => MemoryType.CollaborationPreference,
+            MemoryTypeValue.Note => MemoryType.Note,
+            _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown memory type.")
+        };
+    }
 }
 
 public sealed record MemoryMatch(

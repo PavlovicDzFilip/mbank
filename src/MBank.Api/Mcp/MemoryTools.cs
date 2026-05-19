@@ -18,13 +18,13 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = false, Destructive = false)]
-    [Description("Store durable product or implementation guidance that is likely to matter in future sessions. Each memory type must be one of the valid MemoryType values returned by start_task. Do not store ordinary conversation, temporary reasoning, or information only relevant to the current response. Send short atomic memories; include source text when available.")]
+    [Description("Store durable product or implementation guidance that is likely to matter in future sessions. Each memory type must be one of the valid MemoryType values returned by describe_memory_types. Do not store ordinary conversation, temporary reasoning, or information only relevant to the current response. Send short atomic memories; include source text when available.")]
     public static Task<RememberResponse> Remember(
         MemoryService memoryService,
-        [Description("One or more short atomic memories plus optional source evidence.")] RememberRequest request,
+        [Description("One or more short atomic memories plus optional source evidence.")] RememberToolRequest request,
         CancellationToken cancellationToken)
     {
-        return memoryService.RememberAsync(request, cancellationToken);
+        return memoryService.RememberAsync(request.ToRememberRequest(), cancellationToken);
     }
 
     [McpServerTool(ReadOnly = true)]
