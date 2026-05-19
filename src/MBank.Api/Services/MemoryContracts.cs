@@ -169,3 +169,7 @@ public sealed record AgentInstructionFileStatus(
 public sealed record AgentInstructionBlock(
     string Version,
     string Content);
+
+public sealed record MemoryTypeCatalogResponse(
+    int ModelVersion,
+    IReadOnlyList<MemoryTypeDefinition> Types);

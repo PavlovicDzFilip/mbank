@@ -56,6 +56,7 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
 
         var tools = await SendMcpRequestAsync(client, "tools/list", new JsonObject());
         var startTaskTool = ResolveToolName(tools, "StartTask");
+        var describeMemoryTypesTool = ResolveToolName(tools, "DescribeMemoryTypes");
         var rememberTool = ResolveToolName(tools, "Remember");
         var getTaskContextTool = ResolveToolName(tools, "GetTaskContext");
         var getTool = ResolveToolName(tools, "Get");
@@ -70,6 +71,21 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             && x["text"]!.GetValue<string>().Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("this task", startTaskContent["summary"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(AgentInstructionService.LatestInstructionVersion, startTaskContent["onboarding"]!["latestVersion"]!.GetValue<string>());
+
+        var memoryTypes = await CallToolAsync(client, describeMemoryTypesTool, new JsonObject());
+        var memoryTypesContent = GetStructuredContent(memoryTypes);
+        Assert.Equal(1, memoryTypesContent["modelVersion"]!.GetValue<int>());
+        Assert.Contains(memoryTypesContent["types"]!.AsArray(), x =>
+            x!["value"]!.GetValue<string>() == "product-decision"
+            && x["description"]!.GetValue<string>().Contains("product choice", StringComparison.OrdinalIgnoreCase)
+            && !x["isWarning"]!.GetValue<bool>()
+            && !x["isStartupGuidance"]!.GetValue<bool>());
+        Assert.Contains(memoryTypesContent["types"]!.AsArray(), x =>
+            x!["value"]!.GetValue<string>() == "product-risk"
+            && x["isWarning"]!.GetValue<bool>());
+        Assert.Contains(memoryTypesContent["types"]!.AsArray(), x =>
+            x!["value"]!.GetValue<string>() == "agent-instruction"
+            && x["isStartupGuidance"]!.GetValue<bool>());
 
         var remember = await CallToolAsync(client, rememberTool, new JsonObject
         {

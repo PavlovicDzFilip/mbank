@@ -33,7 +33,7 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Do not recreate `CURRENT_WORK.md` or `PRODUCT_BOARD.md` unless the user explicitly asks for those files.
 - When durable continuity changes, store it through the configured `mbank` MCP server instead of writing planning notes to local continuity files.
 
-<!-- mbank:start version="1.0.5" -->
+<!-- mbank:start version="1.0.6" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
@@ -46,6 +46,8 @@ At the start of a new product, planning, implementation, debugging, or review ta
 4. Call `get_task_context` with a structured task description before proposing a plan or making changes.
 
 Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
+
+Use `describe_memory_types` when you need to inspect the canonical MemoryType values, descriptions, or behavioral flags before calling `remember`.
 
 When calling `remember`, set each memory type to one of these valid MemoryType values: `product-strategy`, `product-decision`, `product-reasoning`, `product-requirement`, `product-constraint`, `product-risk`, `product-open-question`, `technical-architecture`, `technical-decision`, `technical-reasoning`, `technical-rule`, `technical-convention`, `technical-preference`, `technical-constraint`, `technical-risk`, `technical-open-question`, `implementation-result`, `validation-result`, `operational-status`, `operational-procedure`, `agent-instruction`, `project-policy`, `user-preference`, `collaboration-preference`, `note`. Do not invent new type values.
 

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using MBank.Api.Domain;
 using MBank.Api.Services;
 using ModelContextProtocol.Server;
 
@@ -64,6 +65,15 @@ public static class MemoryTools
         CancellationToken cancellationToken)
     {
         return memoryService.ResolveConflictAsync(request, cancellationToken);
+    }
+
+    [McpServerTool(ReadOnly = true)]
+    [Description("Describe the canonical MemoryType values accepted by remember, including descriptions and behavioral flags. Use this when choosing a memory type or validating that a type value is supported.")]
+    public static MemoryTypeCatalogResponse DescribeMemoryTypes()
+    {
+        return new MemoryTypeCatalogResponse(
+            MemoryType.ModelVersion,
+            MemoryType.Definitions);
     }
 
     [McpServerTool(ReadOnly = true)]

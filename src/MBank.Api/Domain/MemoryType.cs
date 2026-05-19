@@ -162,10 +162,14 @@ public sealed class MemoryType : SmartEnum<MemoryType, string>
     public bool IsStartupGuidance { get; }
 
     public static IReadOnlyList<MemoryTypeDefinition> Definitions =>
-        List.Select(x => new MemoryTypeDefinition(x.Value, x.Description)).ToArray();
+        List.Select(x => new MemoryTypeDefinition(x.Value, x.Description, x.IsWarning, x.IsStartupGuidance)).ToArray();
 }
 
-public sealed record MemoryTypeDefinition(string Value, string Description);
+public sealed record MemoryTypeDefinition(
+    string Value,
+    string Description,
+    bool IsWarning,
+    bool IsStartupGuidance);
 
 public sealed class MemoryTypeJsonConverter : JsonConverter<MemoryType>
 {

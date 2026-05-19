@@ -12,5 +12,7 @@ public sealed class MemoryTypeTests
         Assert.Contains(MemoryType.List, x => x == MemoryType.TechnicalRule && x.Value == "technical-rule");
         Assert.Contains(MemoryType.List, x => x == MemoryType.AgentInstruction && x.Value == "agent-instruction");
         Assert.All(MemoryType.Definitions, definition => Assert.False(string.IsNullOrWhiteSpace(definition.Description)));
+        Assert.Contains(MemoryType.Definitions, x => x.Value == "product-risk" && x.IsWarning);
+        Assert.Contains(MemoryType.Definitions, x => x.Value == "agent-instruction" && x.IsStartupGuidance);
     }
 }

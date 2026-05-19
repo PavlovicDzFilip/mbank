@@ -6,7 +6,7 @@ namespace MBank.Api.Services;
 public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration)
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
-    public const string LatestInstructionVersion = "1.0.5";
+    public const string LatestInstructionVersion = "1.0.6";
     public const string BootstrapScriptUrl = "https://mbank.dev/bootstrap-agent.sh";
 
     private static readonly string ValidMemoryTypeValues = string.Join(
@@ -17,6 +17,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
     [
         "Use the configured `mbank` MCP server proactively for durable project memory and guidance.",
         "After `start_task`, call `get_task_context` with a structured task description before proposing a plan or making changes.",
+        "Use `describe_memory_types` when you need to inspect the canonical MemoryType values, descriptions, or behavioral flags before calling `remember`.",
         $"When calling `remember`, set each memory type to one of the valid MemoryType values: {ValidMemoryTypeValues}. Do not invent new type values.",
         "Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.",
         "Use `get` to inspect full memory details when a retrieved memory needs source context.",
@@ -41,6 +42,8 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         4. Call `get_task_context` with a structured task description before proposing a plan or making changes.
 
         Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
+
+        Use `describe_memory_types` when you need to inspect the canonical MemoryType values, descriptions, or behavioral flags before calling `remember`.
 
         When calling `remember`, set each memory type to one of these valid MemoryType values: {ValidMemoryTypeValues}. Do not invent new type values.
 
