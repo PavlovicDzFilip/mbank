@@ -1,7 +1,10 @@
 using Ardalis.SmartEnum;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MBank.Api.Domain;
 
+[JsonConverter(typeof(MemoryTypeJsonConverter))]
 public sealed class MemoryType : SmartEnum<MemoryType, string>
 {
     public const int ModelVersion = 1;
@@ -163,3 +166,33 @@ public sealed class MemoryType : SmartEnum<MemoryType, string>
 }
 
 public sealed record MemoryTypeDefinition(string Value, string Description);
+
+public sealed class MemoryTypeJsonConverter : JsonConverter<MemoryType>
+{
+    public override MemoryType Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options)
+    {
+        var value = reader.GetString();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new JsonException("Memory type is required.");
+        }
+
+        if (!MemoryType.TryFromValue(value, out var memoryType))
+        {
+            throw new JsonException($"Invalid memory type '{value}'.");
+        }
+
+        return memoryType;
+    }
+
+    public override void Write(
+        Utf8JsonWriter writer,
+        MemoryType value,
+        JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.Value);
+    }
+}

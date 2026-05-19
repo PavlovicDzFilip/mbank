@@ -5,7 +5,7 @@ namespace MBank.Tests;
 public sealed class MemoryTypeTests
 {
     [Fact]
-    public void MemoryType_defines_versioned_canonical_values_without_enforcing_runtime_storage()
+    public void MemoryType_defines_versioned_canonical_values_for_storage_and_contracts()
     {
         Assert.Equal(1, MemoryType.ModelVersion);
         Assert.Contains(MemoryType.List, x => x == MemoryType.ProductDecision && x.Value == "product-decision");

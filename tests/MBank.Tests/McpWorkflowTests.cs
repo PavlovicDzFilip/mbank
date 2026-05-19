@@ -79,19 +79,17 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
                 {
                     new JsonObject
                     {
-                        ["type"] = "decision",
+                        ["type"] = "product-decision",
                         ["summary"] = "The MVP must prove the MCP memory loop before dashboard, UI, auth, billing, permissions, generic search, or enterprise work.",
                         ["subject"] = "MVP scope",
-                        ["subjectKind"] = "product_capability",
                         ["tags"] = new JsonArray("mvp", "mcp", "dashboard", "scope"),
                         ["confidence"] = 0.98
                     },
                     new JsonObject
                     {
-                        ["type"] = "warning",
+                        ["type"] = "product-risk",
                         ["summary"] = "Do not start dashboard or UI work until the /mcp agent memory workflow is proven end to end.",
                         ["subject"] = "MVP scope",
-                        ["subjectKind"] = "product_capability",
                         ["tags"] = new JsonArray("ui", "dashboard", "mcp", "warning"),
                         ["confidence"] = 0.95
                     }
@@ -109,10 +107,10 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         var storedMemories = rememberContent["storedMemories"]!.AsArray();
         Assert.Equal(2, storedMemories.Count);
         var decisionId = storedMemories
-            .Single(x => x!["type"]!.GetValue<string>() == "decision")!["id"]!
+            .Single(x => x!["type"]!.GetValue<string>() == "product-decision")!["id"]!
             .GetValue<Guid>();
         var warningId = storedMemories
-            .Single(x => x!["type"]!.GetValue<string>() == "warning")!["id"]!
+            .Single(x => x!["type"]!.GetValue<string>() == "product-risk")!["id"]!
             .GetValue<Guid>();
 
         var context = await CallToolAsync(client, getTaskContextTool, new JsonObject
@@ -128,7 +126,6 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
                 ["workArea"] = new JsonObject
                 {
                     ["subject"] = "MVP scope",
-                    ["subjectKind"] = "product_capability",
                     ["modules"] = new JsonArray("MBank.Api", "MCP")
                 },
                 ["limit"] = 4
@@ -254,7 +251,6 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
                 ["workArea"] = new JsonObject
                 {
                     ["subject"] = "MVP scope",
-                    ["subjectKind"] = "product_capability",
                     ["modules"] = new JsonArray("MBank.Api", "MCP")
                 },
                 ["limit"] = 4

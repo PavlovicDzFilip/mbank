@@ -54,17 +54,15 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
-                    "preference",
+                    MemoryType.UserPreference,
                     "The user prefers small, focused commits rather than large bundled commits.",
                     "Small commit preference",
-                    "user_preference",
                     ["working-style", "commits"],
                     1),
                 new MemoryDraft(
-                    "product_preference",
+                    MemoryType.ProductStrategy,
                     "MBank should make user working-style preferences easy for agents to retrieve alongside product and technical context at the start of tasks.",
                     "Working-style memory retrieval",
-                    "product_area",
                     ["working-style", "retrieval"],
                     1)
             ]),
@@ -95,10 +93,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
-                    "decision",
+                    MemoryType.TechnicalDecision,
                     "Default project memory should not leak into another project.",
                     "Project isolation",
-                    "technical-area",
                     ["isolation"],
                     1)
             ]),
@@ -117,7 +114,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 "Check project isolation",
                 "Can this project see the default project memory?",
                 "validation"),
-            new WorkArea("Project isolation", "technical-area"),
+            new WorkArea("Project isolation"),
             Limit: 4), CancellationToken.None);
 
         Assert.Equal("no_context_found", response.Status);
@@ -136,7 +133,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 "Validate path handling",
                 "Reject absolute local paths so MBank never stores machine-specific repo locations.",
                 "validation"),
-            new WorkArea("Path validation", "technical-area", Files: ["D:\\MBank\\src\\MBank.Api\\Program.cs"])),
+            new WorkArea("Path validation", Files: ["D:\\MBank\\src\\MBank.Api\\Program.cs"])),
             CancellationToken.None));
 
         Assert.Contains("absolute local paths are not allowed", error.Message);
@@ -155,7 +152,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 "Decide whether the MVP should add a dashboard",
                 "We are considering a Razor UI, billing, permissions, and enterprise controls. Should the MVP still focus on MCP storage and retrieval?",
                 "product-planning"),
-            new WorkArea("MVP scope", "product_capability", Modules: ["MBank.Api"]),
+            new WorkArea("MVP scope", Modules: ["MBank.Api"]),
             Limit: 4), CancellationToken.None);
 
         Assert.Equal("context_found", response.Status);
@@ -178,7 +175,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 "Run MBank.Api from Codex",
                 "The API starts but appsettings and user-secrets are missing. Check the launch working directory and visible process guidance.",
                 "implementation"),
-            new WorkArea("MBank.Api launch", "technical-area", Modules: ["MBank.Api"]),
+            new WorkArea("MBank.Api launch", Modules: ["MBank.Api"]),
             Limit: 3), CancellationToken.None);
 
         Assert.NotEmpty(response.StrongMatches);
@@ -197,10 +194,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
-                    "technical_convention",
+                    MemoryType.TechnicalConvention,
                     "The retrieval test sentinel term is apricotvector. It proves PostgreSQL full-text search participates in ranking.",
                     "Hybrid retrieval",
-                    "technical-area",
                     ["full-text", "apricotvector"],
                     1)
             ]),
@@ -209,10 +205,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
-                    "decision",
+                    MemoryType.ProductDecision,
                     "A generic unrelated memory about invoices and billing should not satisfy retrieval validation.",
                     "Enterprise billing",
-                    "product_capability",
                     ["billing"],
                     0.95)
             ]),
@@ -223,7 +218,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 "Find apricotvector retrieval behavior",
                 "Does the apricotvector sentinel show that full text search contributes to get_task_context?",
                 "validation"),
-            new WorkArea("Hybrid retrieval", "technical-area"),
+            new WorkArea("Hybrid retrieval"),
             Limit: 2), CancellationToken.None);
 
         Assert.NotEmpty(response.StrongMatches);
@@ -242,7 +237,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 "Reconsider MVP scope",
                 "Should we ignore the MCP loop and start UI, permissions, and enterprise workflows now?",
                 "product-planning"),
-            new WorkArea("MVP scope", "product_capability"),
+            new WorkArea("MVP scope"),
             Limit: 5), CancellationToken.None);
 
         Assert.False(response.CanProceed);
@@ -276,7 +271,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 "Validate MCP retrieval quality",
                 "Check storage, retrieval, launch configuration, and MCP tool context quality in one planning task.",
                 "validation"),
-            new WorkArea("MCP retrieval validation", "technical-area", Modules: ["MBank.Api", "MCP"]),
+            new WorkArea("MCP retrieval validation", Modules: ["MBank.Api", "MCP"]),
             Limit: 5), CancellationToken.None);
 
         Assert.True(response.StrongMatches.Select(x => x.Subject).Distinct().Count() > 1);
@@ -292,10 +287,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
-                    "decision",
+                    MemoryType.ProductDecision,
                     "Generic search is not a core v1 MCP workflow unless a clear manual or debug use case appears later.",
                     "MCP tool surface",
-                    "technical_area",
                     ["mcp", "tools", "search"],
                     0.98)
             ]),
@@ -328,10 +322,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         var stored = await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
-                    "decision",
+                    MemoryType.TechnicalDecision,
                     "Source evidence must be retrievable through get so agents can inspect where a memory came from.",
                     "Memory evidence",
-                    "technical-area",
                     ["source", "evidence"],
                     1)
             ],
@@ -357,17 +350,15 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         var stored = await service.RememberAsync(new RememberRequest(
             [
                 new MemoryDraft(
-                    "agent_guidance",
+                    MemoryType.AgentInstruction,
                     "Use the current reproducible docker compose process for MBank infrastructure.",
                     "Infrastructure launch",
-                    "agent_guidance",
                     ["working-style", "launch"],
                     1),
                 new MemoryDraft(
-                    "agent_guidance",
+                    MemoryType.AgentInstruction,
                     "Use the obsolete one-off container process with the violetmarker sentinel.",
                     "Infrastructure launch",
-                    "agent_guidance",
                     ["working-style", "launch", "violetmarker"],
                     1)
             ]),
@@ -401,7 +392,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 "Check violetmarker launch guidance",
                 "Should agents use the violetmarker one-off container launch process?",
                 "implementation"),
-            new WorkArea("Infrastructure launch", "agent_guidance"),
+            new WorkArea("Infrastructure launch"),
             Limit: 4), CancellationToken.None);
 
         Assert.DoesNotContain(context.StrongMatches, x => x.Id == supersededMemoryId);
@@ -425,45 +416,39 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         var memories = new List<MemoryDraft>
         {
             new(
-                "decision",
+                MemoryType.ProductDecision,
                 "The MVP focuses on MCP storage and retrieval before UI, team management, auth, billing, permissions, dashboards, and enterprise controls.",
                 "MVP scope",
-                "product_capability",
                 ["mvp", "mcp", "storage", "retrieval", "scope"],
                 0.98),
             new(
-                "technical_convention",
+                MemoryType.TechnicalConvention,
                 "When Codex runs MBank.Api, it must use D:\\MBank\\src\\MBank.Api as the working directory so appsettings and .NET user-secrets are applied correctly.",
                 "MBank.Api launch",
-                "technical-area",
                 ["dotnet", "user-secrets", "launch"],
                 1),
             new(
-                "technical_convention",
+                MemoryType.TechnicalConvention,
                 "When Codex runs the MBank project, start the app in a visible window so the user can see and control the running process.",
                 "MBank.Api launch",
-                "technical-area",
                 ["dotnet", "visible-window", "launch"],
                 1),
             new(
-                "decision",
+                MemoryType.ProductDecision,
                 "Generic search is not a core v1 MCP workflow unless a clear manual or debug use case appears later.",
                 "MCP tool surface",
-                "technical_area",
                 ["mcp", "tools", "search"],
                 0.98),
             new(
-                "validation_result",
+                MemoryType.ValidationResult,
                 "MBank MCP get_task_context was validated end to end with hybrid retrieval, ranked matches, and no noisy cross-subject conflicts.",
                 "MCP retrieval validation",
-                "technical-area",
                 ["mcp", "validation", "hybrid-retrieval", "rrf"],
                 1),
             new(
-                "decision",
+                MemoryType.ProductDecision,
                 "Enterprise billing, organization hierarchy, tenant administration, and audit controls belong to a later product tier.",
                 "Enterprise billing",
-                "product_capability",
                 ["enterprise", "billing", "permissions"],
                 0.9)
         };
@@ -471,10 +456,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         if (includeMvpWarning)
         {
             memories.Add(new MemoryDraft(
-                "warning",
+                MemoryType.ProductRisk,
                 "Do not start UI work before the MCP memory loop is proven and covered by tests.",
                 "MVP scope",
-                "product_capability",
                 ["ui", "mcp", "tests"],
                 0.9));
         }

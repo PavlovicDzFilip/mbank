@@ -1,17 +1,23 @@
 using System.Text.RegularExpressions;
+using MBank.Api.Domain;
 
 namespace MBank.Api.Services;
 
 public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration)
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
-    public const string LatestInstructionVersion = "1.0.4";
+    public const string LatestInstructionVersion = "1.0.5";
     public const string BootstrapScriptUrl = "https://mbank.dev/bootstrap-agent.sh";
+
+    private static readonly string ValidMemoryTypeValues = string.Join(
+        ", ",
+        MemoryType.List.Select(x => $"`{x.Value}`"));
 
     public static readonly IReadOnlyList<string> TaskStartRules =
     [
         "Use the configured `mbank` MCP server proactively for durable project memory and guidance.",
         "After `start_task`, call `get_task_context` with a structured task description before proposing a plan or making changes.",
+        $"When calling `remember`, set each memory type to one of the valid MemoryType values: {ValidMemoryTypeValues}. Do not invent new type values.",
         "Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.",
         "Use `get` to inspect full memory details when a retrieved memory needs source context.",
         "When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.",
@@ -35,6 +41,8 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         4. Call `get_task_context` with a structured task description before proposing a plan or making changes.
 
         Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
+
+        When calling `remember`, set each memory type to one of these valid MemoryType values: {ValidMemoryTypeValues}. Do not invent new type values.
 
         Use `get` to inspect full memory details when a retrieved memory needs source context.
 

@@ -16,13 +16,11 @@ public sealed class MemoryEntry
 
     public MemoryId Id { get; private set; } = MemoryId.New();
 
-    public string Type { get; private set; } = null!;
+    public MemoryType Type { get; private set; } = null!;
 
     public string Summary { get; private set; } = null!;
 
     public string? Subject { get; private set; }
-
-    public string? SubjectKind { get; private set; }
 
     public string[] Tags { get; private set; } = [];
 
@@ -50,10 +48,9 @@ public sealed class MemoryEntry
     public static MemoryEntry Create(
         UserId userId,
         ProjectId projectId,
-        string type,
+        MemoryType type,
         string summary,
         string? subject,
-        string? subjectKind,
         IReadOnlyList<string> tags,
         double confidence,
         string searchText,
@@ -64,10 +61,9 @@ public sealed class MemoryEntry
         {
             UserId = userId,
             ProjectId = projectId,
-            Type = RequiredText(type, "Memory type", 64, nameof(type)),
+            Type = type ?? throw new ArgumentNullException(nameof(type)),
             Summary = RequiredText(summary, "Memory summary", 2000, nameof(summary)),
             Subject = OptionalText(subject, "Memory subject", 256, nameof(subject)),
-            SubjectKind = OptionalText(subjectKind, "Memory subject kind", 64, nameof(subjectKind)),
             Tags = NormalizeTags(tags),
             Confidence = Math.Clamp(confidence, 0, 1),
             SearchText = RequiredText(searchText, "Memory search text", 5000, nameof(searchText)),
@@ -89,12 +85,12 @@ public sealed class MemoryEntry
 
     public void ChangeType(MemoryType type)
     {
-        if (Type == type.Value)
+        if (Type == type)
         {
             return;
         }
 
-        Type = type.Value;
+        Type = type;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

@@ -19,58 +19,8 @@ public sealed class MemoryService(
     private const double StrongMatchRawThreshold = 0.28;
     private const double ExcellentMatchRawScore = 0.60;
 
-    private static readonly HashSet<string> WarningTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "warning",
-        "constraint"
-    };
-
-    private static readonly string[] AgentGuidanceMemoryTypes =
-    [
-        "agent_guidance",
-        "working_style",
-        "working_style_preference",
-        "user_preference",
-        "collaboration_preference",
-        "implementation_preference",
-        "project_instruction",
-        "preference"
-    ];
-
-    private static readonly string[] DirectAgentGuidanceMemoryTypes =
-    [
-        "agent_guidance",
-        "working_style",
-        "working_style_preference",
-        "user_preference",
-        "collaboration_preference",
-        "implementation_preference",
-        "project_instruction"
-    ];
-
-    private static readonly string[] AgentGuidanceSubjectKinds =
-    [
-        "agent_guidance",
-        "working_style",
-        "user_preference",
-        "collaboration_preference",
-        "project_instruction",
-        "project-instructions"
-    ];
-
-    private static readonly HashSet<string> AgentGuidanceTags = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "working-style",
-        "workflow",
-        "collaboration",
-        "permission",
-        "planning",
-        "autonomy",
-        "commits",
-        "review-agent",
-        "scope-control",
-        "simplicity"
-    };
+    private static readonly MemoryType[] StartupGuidanceTypes =
+        MemoryType.List.Where(x => x.IsStartupGuidance).ToArray();
 
     public async Task<RememberResponse> RememberAsync(RememberRequest request, CancellationToken cancellationToken)
     {
@@ -101,7 +51,7 @@ public sealed class MemoryService(
         {
             ValidateDraft(draft);
             var tags = NormalizeTags(draft.Tags);
-            var searchText = BuildMemorySearchText(draft.Type, draft.Summary, draft.Subject, draft.SubjectKind, tags, request.Source?.SourceText);
+            var searchText = BuildMemorySearchText(draft.Type, draft.Summary, draft.Subject, tags, request.Source?.SourceText);
             var vector = new Vector(await embeddings.GenerateEmbeddingAsync(searchText, cancellationToken));
 
             var entry = MemoryEntry.Create(
@@ -110,14 +60,13 @@ public sealed class MemoryService(
                 draft.Type,
                 draft.Summary,
                 draft.Subject,
-                draft.SubjectKind,
                 tags,
                 draft.Confidence ?? 0.7,
                 searchText,
                 vector,
                 source?.Id);
 
-            var related = await FindSimilarMemoriesAsync(scope.ProjectId, vector, entry.Subject, entry.SubjectKind, 4, cancellationToken);
+            var related = await FindSimilarMemoriesAsync(scope.ProjectId, vector, entry.Subject, 4, cancellationToken);
 
             db.Memories.Add(entry);
             stored.Add(ToStoredMemory(entry));
@@ -143,8 +92,7 @@ public sealed class MemoryService(
         var guidanceMemories = await db.Memories
             .AsNoTracking()
             .Where(x => x.ProjectId == scope.ProjectId && x.Status == MemoryEntry.ActiveStatus)
-            .Where(x => AgentGuidanceMemoryTypes.Contains(x.Type)
-                || (x.SubjectKind != null && AgentGuidanceSubjectKinds.Contains(x.SubjectKind)))
+            .Where(x => StartupGuidanceTypes.Contains(x.Type))
             .OrderByDescending(x => x.UpdatedAt)
             .Take(50)
             .ToListAsync(cancellationToken);
@@ -294,7 +242,6 @@ public sealed class MemoryService(
             memory.Type,
             memory.Summary,
             memory.Subject,
-            memory.SubjectKind,
             memory.Tags,
             memory.Confidence,
             memory.Status,
@@ -421,7 +368,6 @@ public sealed class MemoryService(
         ProjectId projectId,
         Vector vector,
         string? subject,
-        string? subjectKind,
         int limit,
         CancellationToken cancellationToken)
     {
@@ -431,7 +377,7 @@ public sealed class MemoryService(
 
         if (subject is not null)
         {
-            query = query.Where(x => x.Subject == subject || x.SubjectKind == subjectKind);
+            query = query.Where(x => x.Subject == subject);
         }
 
         var results = await query
@@ -554,13 +500,8 @@ public sealed class MemoryService(
             score += 0.15;
         }
 
-        if (TextEquals(memory.SubjectKind, request.WorkArea?.SubjectKind))
-        {
-            score += 0.08;
-        }
-
         var metadataTerms = new HashSet<string>(
-            [.. memory.Tags, memory.Subject ?? "", memory.SubjectKind ?? "", memory.Type],
+            [.. memory.Tags, memory.Subject ?? "", memory.Type.Value],
             StringComparer.OrdinalIgnoreCase);
 
         var metadataMatches = metadataTerms.Count(x => !string.IsNullOrWhiteSpace(x) && queryTerms.Contains(x));
@@ -589,7 +530,6 @@ public sealed class MemoryService(
             scored.Memory.Type,
             scored.Memory.Summary,
             scored.Memory.Subject,
-            scored.Memory.SubjectKind,
             scored.Memory.Tags,
             scored.Memory.Confidence,
             NormalizeMatchScore(scored.Score),
@@ -678,7 +618,7 @@ public sealed class MemoryService(
         var items = new List<TaskContextAttentionItem>();
 
         items.AddRange(strongMatches
-            .Where(x => WarningTypes.Contains(x.Memory.Type))
+            .Where(x => x.Memory.Type.IsWarning)
             .GroupBy(x => x.Memory.Summary, StringComparer.OrdinalIgnoreCase)
             .Select(x =>
             {
@@ -764,17 +704,15 @@ public sealed class MemoryService(
         builder.AppendLine($"Title: {request.Task.Title}");
         builder.AppendLine($"Description: {request.Task.Description}");
         builder.AppendLine($"Subject: {request.WorkArea?.Subject}");
-        builder.AppendLine($"Subject kind: {request.WorkArea?.SubjectKind}");
         builder.AppendLine($"Files: {string.Join(", ", request.WorkArea?.Files ?? [])}");
         builder.AppendLine($"Modules: {string.Join(", ", request.WorkArea?.Modules ?? [])}");
         return builder.ToString();
     }
 
     private static string BuildMemorySearchText(
-        string type,
+        MemoryType type,
         string summary,
         string? subject,
-        string? subjectKind,
         IReadOnlyList<string> tags,
         string? sourceText)
     {
@@ -784,9 +722,8 @@ public sealed class MemoryService(
 
         return string.Join(
             "\n",
-            $"Type: {type}",
+            $"Type: {type.Value}",
             $"Subject: {subject}",
-            $"Subject kind: {subjectKind}",
             $"Summary: {summary}",
             $"Tags: {string.Join(", ", tags)}",
             $"Source excerpt: {sourceExcerpt}");
@@ -831,7 +768,6 @@ public sealed class MemoryService(
             entry.Type,
             entry.Summary,
             entry.Subject,
-            entry.SubjectKind,
             entry.Tags,
             entry.Confidence);
     }
@@ -853,7 +789,7 @@ public sealed class MemoryService(
 
     private static void ValidateDraft(MemoryDraft draft)
     {
-        if (string.IsNullOrWhiteSpace(draft.Type))
+        if (draft.Type is null)
         {
             throw new ArgumentException("Each memory needs a type.");
         }
@@ -941,27 +877,19 @@ public sealed class MemoryService(
 
     private static bool IsPotentialConflict(MemoryEntry left, MemoryEntry right)
     {
-        return WarningTypes.Contains(left.Type)
-            || WarningTypes.Contains(right.Type)
-            || !string.Equals(left.Type, right.Type, StringComparison.OrdinalIgnoreCase);
+        return left.Type.IsWarning
+            || right.Type.IsWarning
+            || left.Type != right.Type;
     }
 
     private static bool IsAgentGuidanceMemory(MemoryEntry memory)
     {
-        if (IsOneOf(memory.Type, DirectAgentGuidanceMemoryTypes)
-            || IsOneOf(memory.SubjectKind, AgentGuidanceSubjectKinds))
+        if (memory.Type.IsStartupGuidance)
         {
             return true;
         }
 
-        return string.Equals(memory.Type, "preference", StringComparison.OrdinalIgnoreCase)
-            && memory.Tags.Any(AgentGuidanceTags.Contains);
-    }
-
-    private static bool IsOneOf(string? value, IReadOnlyCollection<string> candidates)
-    {
-        return !string.IsNullOrWhiteSpace(value)
-            && candidates.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+        return false;
     }
 
     private static string NormalizeRuleKey(string text)

@@ -125,10 +125,6 @@ namespace MBank.Api.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("SubjectKind")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
                     b.Property<string>("Summary")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -169,8 +165,6 @@ namespace MBank.Api.Data.Migrations
                     b.HasIndex("Status");
 
                     b.HasIndex("Subject");
-
-                    b.HasIndex("SubjectKind");
 
                     b.HasIndex("Type");
 

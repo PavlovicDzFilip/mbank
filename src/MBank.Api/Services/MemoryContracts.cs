@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MBank.Api.Domain;
 
 namespace MBank.Api.Services;
 
@@ -7,10 +8,9 @@ public sealed record RememberRequest(
     SourceDraft? Source = null);
 
 public sealed record MemoryDraft(
-    string Type,
+    MemoryType Type,
     string Summary,
     string? Subject = null,
-    string? SubjectKind = null,
     IReadOnlyList<string>? Tags = null,
     double? Confidence = null);
 
@@ -27,10 +27,9 @@ public sealed record RememberResponse(
 
 public sealed record StoredMemory(
     Guid Id,
-    string Type,
+    MemoryType Type,
     string Summary,
     string? Subject,
-    string? SubjectKind,
     IReadOnlyList<string> Tags,
     double Confidence);
 
@@ -53,7 +52,6 @@ public sealed record TaskDescription(
 
 public sealed record WorkArea(
     string? Subject = null,
-    string? SubjectKind = null,
     IReadOnlyList<string>? Files = null,
     IReadOnlyList<string>? Modules = null);
 
@@ -96,10 +94,9 @@ public enum TaskContextAttentionAction
 
 public sealed record MemoryMatch(
     Guid Id,
-    string Type,
+    MemoryType Type,
     string Summary,
     string? Subject,
-    string? SubjectKind,
     IReadOnlyList<string> Tags,
     double MemoryConfidence,
     double MatchScore,
@@ -107,10 +104,9 @@ public sealed record MemoryMatch(
 
 public sealed record MemoryDetail(
     Guid Id,
-    string Type,
+    MemoryType Type,
     string Summary,
     string? Subject,
-    string? SubjectKind,
     IReadOnlyList<string> Tags,
     double Confidence,
     string Status,

@@ -81,13 +81,12 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
             entity.Property(x => x.Id)
                 .HasConversion(id => id.Value, value => new MemoryId(value));
             entity.Property(x => x.Type)
+                .HasConversion(type => type.Value, value => MemoryType.FromValue(value))
                 .HasMaxLength(64);
             entity.Property(x => x.Summary)
                 .HasMaxLength(2000);
             entity.Property(x => x.Subject)
                 .HasMaxLength(256);
-            entity.Property(x => x.SubjectKind)
-                .HasMaxLength(64);
             entity.Property(x => x.Status)
                 .HasMaxLength(32);
             entity.Property(x => x.UserId)
@@ -110,7 +109,6 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
             entity.HasIndex(x => x.UserId);
             entity.HasIndex(x => x.ProjectId);
             entity.HasIndex(x => x.Subject);
-            entity.HasIndex(x => x.SubjectKind);
             entity.HasIndex(x => x.Status);
             entity.HasIndex(x => x.Embedding)
                 .HasMethod("hnsw")
