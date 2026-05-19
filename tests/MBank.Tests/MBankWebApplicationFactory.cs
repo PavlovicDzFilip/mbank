@@ -50,6 +50,10 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
                 ["OpenAI:ApiKey"] = "test-api-key",
                 ["OpenAI:EmbeddingModel"] = "test-embedding-model",
                 ["OpenAI:EmbeddingDimensions"] = "1536",
+                ["Smtp:Host"] = "localhost",
+                ["Smtp:Port"] = "1025",
+                ["Smtp:FromAddress"] = "noreply@example.test",
+                ["MagicLink:LifetimeMinutes"] = "15",
                 ["MBANK_ADMIN_TOKEN"] = TestDatabase.AdminToken
             });
         });
@@ -58,12 +62,15 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
         {
             services.RemoveAll<DbContextOptions<MemoryDbContext>>();
             services.RemoveAll<IEmbeddingService>();
+            services.RemoveAll<IEmailSender>();
             services.RemoveAll<MemoryScopeProvider>();
 
             services.AddDbContext<MemoryDbContext>(options =>
                 options.UseNpgsql(RequireDatabase().ConnectionString, npgsql => npgsql.UseVector()));
 
             services.AddScoped<IEmbeddingService, FakeEmbeddingService>();
+            services.AddSingleton<FakeEmailSender>();
+            services.AddSingleton<IEmailSender>(provider => provider.GetRequiredService<FakeEmailSender>());
             services.AddScoped(_ =>
             {
                 var currentScope = new MemoryScopeProvider();

@@ -1,0 +1,43 @@
+@page "/login"
+@model LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+
+<main class="auth-shell">
+    <section class="auth-panel" aria-labelledby="login-title">
+        <div class="brand-mark" aria-hidden="true">M</div>
+        <p class="eyebrow">MBank</p>
+        <h1 id="login-title">Sign in</h1>
+
+        @if (Model.IsSignedIn)
+        {
+            <div class="notice success" role="status">
+                Signed in as <strong>@Model.SignedInEmail</strong>
+            </div>
+            <form method="post" action="/logout" class="stack">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="secondary-button">Sign out</button>
+            </form>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(Model.Message))
+            {
+                <div class="notice success" role="status">@Model.Message</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Model.Error))
+            {
+                <div class="notice error" role="alert">@Model.Error</div>
+            }
+
+            <form method="post" class="stack">
+                <label asp-for="Email">Email address</label>
+                <input asp-for="Email" type="email" autocomplete="email" placeholder="you@example.com" />
+                <span asp-validation-for="Email" class="field-error"></span>
+                <button type="submit">Send magic link</button>
+            </form>
+        }
+    </section>
+</main>

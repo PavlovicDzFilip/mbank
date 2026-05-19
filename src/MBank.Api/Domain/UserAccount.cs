@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net.Mail;
 
 namespace MBank.Api.Domain;
 
@@ -30,7 +31,26 @@ public sealed class UserAccount
 
     public static string? NormalizeEmail(string? email)
     {
-        return OptionalText(email, "User email", 320, nameof(email));
+        var normalized = OptionalText(email, "User email", 320, nameof(email));
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var address = new MailAddress(normalized);
+            if (!string.Equals(address.Address, normalized, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("User email must be a valid email address.", nameof(email));
+            }
+        }
+        catch (FormatException ex)
+        {
+            throw new ArgumentException("User email must be a valid email address.", nameof(email), ex);
+        }
+
+        return normalized.ToLowerInvariant();
     }
 
     private static string RequiredText(string value, string displayName, int maxLength, string parameterName)

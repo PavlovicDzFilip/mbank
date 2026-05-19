@@ -50,6 +50,7 @@ internal sealed class TestDatabase : IAsyncDisposable
     public async Task ResetAsync()
     {
         await using var context = CreateDbContext();
+        await context.Database.ExecuteSqlRawAsync("DELETE FROM magic_link_logins");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM memory_links");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM memories");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM source_records");

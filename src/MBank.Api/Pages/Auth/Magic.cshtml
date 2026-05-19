@@ -1,0 +1,15 @@
+@page "/auth/magic"
+@model MagicModel
+@{
+    ViewData["Title"] = "Signing in";
+}
+
+<main class="auth-shell">
+    <section class="auth-panel" aria-labelledby="magic-title">
+        <div class="brand-mark" aria-hidden="true">M</div>
+        <p class="eyebrow">MBank</p>
+        <h1 id="magic-title">Signing in</h1>
+        <div class="notice error" role="alert">@Model.Error</div>
+        <a class="secondary-link" href="/login">Request a new link</a>
+    </section>
+</main>

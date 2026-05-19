@@ -13,6 +13,8 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
 
     public DbSet<AccessToken> AccessTokens => Set<AccessToken>();
 
+    public DbSet<MagicLinkLogin> MagicLinkLogins => Set<MagicLinkLogin>();
+
     public DbSet<MemoryEntry> Memories => Set<MemoryEntry>();
 
     public DbSet<SourceRecord> SourceRecords => Set<SourceRecord>();
@@ -101,6 +103,21 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
                 .WithMany()
                 .HasForeignKey(x => x.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MagicLinkLogin>(entity =>
+        {
+            entity.ToTable("magic_link_logins");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id)
+                .HasConversion(id => id.Value, value => new MagicLinkLoginId(value));
+            entity.Property(x => x.Email)
+                .HasMaxLength(320);
+            entity.Property(x => x.TokenHash)
+                .HasMaxLength(128);
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => x.Email);
+            entity.HasIndex(x => x.ExpiresAt);
         });
 
         modelBuilder.Entity<MemoryEntry>(entity =>

@@ -4,6 +4,7 @@ using MBank.Api.Data;
 using MBank.Api.Mcp;
 using MBank.Api.Options;
 using MBank.Api.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,14 +28,41 @@ builder.Services
     .Validate(options => options.EmbeddingDimensions > 0, "OpenAI:EmbeddingDimensions must be greater than zero.")
     .ValidateOnStart();
 
+builder.Services
+    .AddOptions<SmtpOptions>()
+    .Bind(builder.Configuration.GetSection(SmtpOptions.SectionName))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.Host), "Smtp:Host is required.")
+    .Validate(options => options.Port > 0, "Smtp:Port must be greater than zero.")
+    .Validate(options => !string.IsNullOrWhiteSpace(options.FromAddress), "Smtp:FromAddress is required.")
+    .ValidateOnStart();
+
+builder.Services
+    .AddOptions<MagicLinkOptions>()
+    .Bind(builder.Configuration.GetSection(MagicLinkOptions.SectionName))
+    .ValidateOnStart();
+
 var connectionString = builder.Configuration.GetConnectionString("MemoryDb")
     ?? throw new InvalidOperationException("ConnectionStrings:MemoryDb is required.");
+
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/login";
+        options.LogoutPath = "/logout";
+        options.Cookie.Name = "MBank.Auth";
+        options.SlidingExpiration = true;
+    });
+builder.Services.AddAuthorization();
+builder.Services.AddRazorPages();
 
 builder.Services.AddDbContext<MemoryDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));
 
 builder.Services.AddScoped<IEmbeddingService, OpenAiEmbeddingService>();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddSingleton<AgentInstructionService>();
+builder.Services.AddScoped<MagicLinkAuthenticationService>();
 builder.Services.AddScoped<MemoryService>();
 builder.Services.AddScoped<MemoryScopeProvider>();
 
@@ -59,6 +87,10 @@ builder.Services
 
 var app = builder.Build();
 
+app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapGet("/", () => Results.Ok(new
 {
     name = "MBank",
@@ -73,6 +105,7 @@ app.MapGet("/onboarding/agent-instructions", (AgentInstructionService agentInstr
 });
 
 app.MapAdminProvisioningEndpoints();
+app.MapRazorPages();
 
 app.UseWhen(
     context => context.Request.Path.StartsWithSegments("/mcp"),
