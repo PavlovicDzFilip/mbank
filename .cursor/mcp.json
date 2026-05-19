@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+      "mbank": {
+        "enabled": true,
+        "url": "https://mbank.engineeringwithfilip.com/mcp",
+        "headers": {
+          "Authorization": "Bearer mbp_59RkJO87twZ69hFu8KLKLjeikMN7kMgMFH2tZEXhuD4"
+        }
+      }
+    }
+  }
