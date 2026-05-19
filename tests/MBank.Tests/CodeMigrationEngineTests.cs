@@ -105,6 +105,22 @@ public sealed class CodeMigrationEngineTests
             harness.Runs.Where(run => run.StartsWith("ordered_", StringComparison.Ordinal)));
     }
 
+    [Fact]
+    public async Task Runner_creates_new_scope_for_each_pending_migration()
+    {
+        await using var harness = await CodeMigrationHarness.CreateAsync();
+
+        await harness.RunAsync();
+
+        var scopeRuns = harness.Runs
+            .Where(run => run.StartsWith("scope_", StringComparison.Ordinal))
+            .Select(run => Guid.Parse(run.Split(':')[1]))
+            .ToArray();
+
+        Assert.Equal(2, scopeRuns.Length);
+        Assert.NotEqual(scopeRuns[0], scopeRuns[1]);
+    }
+
     private static string MigrationId<TMigration>()
     {
         return CodeMigrationDescriptor.Create(typeof(TMigration)).Id;
@@ -131,6 +147,14 @@ public sealed class CodeMigrationEngineTests
     [CodeMigration("20260517120201_ordered_second")]
     private sealed class OrderedSecondCodeMigration(MigrationRunRecorder recorder) : RecordingMigration(recorder, "ordered_second");
 
+    [CodeMigration("20260517120300_scoped_first")]
+    private sealed class ScopedFirstCodeMigration(MigrationRunRecorder recorder, ScopedMigrationMarker marker)
+        : ScopedMigration(recorder, marker, "scope_first");
+
+    [CodeMigration("20260517120301_scoped_second")]
+    private sealed class ScopedSecondCodeMigration(MigrationRunRecorder recorder, ScopedMigrationMarker marker)
+        : ScopedMigration(recorder, marker, "scope_second");
+
     private abstract class RecordingMigration(MigrationRunRecorder recorder, string name) : ICodeMigration
     {
         public Task RunAsync()
@@ -138,6 +162,23 @@ public sealed class CodeMigrationEngineTests
             recorder.Record(name);
             return Task.CompletedTask;
         }
+    }
+
+    private abstract class ScopedMigration(
+        MigrationRunRecorder recorder,
+        ScopedMigrationMarker marker,
+        string name) : ICodeMigration
+    {
+        public Task RunAsync()
+        {
+            recorder.Record($"{name}:{marker.Id}");
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ScopedMigrationMarker
+    {
+        public Guid Id { get; } = Guid.NewGuid();
     }
 
     private sealed class MigrationRunRecorder
@@ -199,7 +240,7 @@ public sealed class CodeMigrationEngineTests
             var runnerScope = serviceProvider.CreateAsyncScope();
             var runner = new CodeMigrationRunner(
                 runnerScope.ServiceProvider.GetRequiredService<MemoryDbContext>(),
-                runnerScope.ServiceProvider,
+                serviceProvider.GetRequiredService<IServiceScopeFactory>(),
                 runnerScope.ServiceProvider.GetRequiredService<ILogger<CodeMigrationRunner>>(),
                 typeof(CodeMigrationEngineTests).Assembly);
 
@@ -265,6 +306,7 @@ public sealed class CodeMigrationEngineTests
         {
             var services = new ServiceCollection();
             services.AddSingleton(recorder);
+            services.AddScoped<ScopedMigrationMarker>();
             services.AddLogging();
             services.AddDbContext<MemoryDbContext>(options =>
                 options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));

@@ -6,17 +6,17 @@ namespace MBank.MigrationService.CodeMigrations.Engine;
 
 internal sealed class CodeMigrationRunner(
     MemoryDbContext db,
-    IServiceProvider serviceProvider,
+    IServiceScopeFactory serviceScopeFactory,
     ILogger<CodeMigrationRunner> logger)
 {
     private readonly Assembly _migrationAssembly = typeof(CodeMigrationRunner).Assembly;
 
     internal CodeMigrationRunner(
         MemoryDbContext db,
-        IServiceProvider serviceProvider,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<CodeMigrationRunner> logger,
         Assembly migrationAssembly)
-        : this(db, serviceProvider, logger)
+        : this(db, serviceScopeFactory, logger)
     {
         _migrationAssembly = migrationAssembly;
     }
@@ -71,10 +71,13 @@ internal sealed class CodeMigrationRunner(
             migration.Id,
             migration.Type.Name);
 
-        await using var transaction =
-            await db.Database.BeginTransactionAsync(cancellationToken);
+        await using var scope = serviceScopeFactory.CreateAsyncScope();
+        var migrationDb = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
 
-        var alreadyApplied = await db.CodeMigrations
+        await using var transaction =
+            await migrationDb.Database.BeginTransactionAsync(cancellationToken);
+
+        var alreadyApplied = await migrationDb.CodeMigrations
             .AnyAsync(x => x.Id == migration.Id, cancellationToken);
 
         if (alreadyApplied)
@@ -88,14 +91,14 @@ internal sealed class CodeMigrationRunner(
 
         var migrationInstance =
             (ICodeMigration)ActivatorUtilities.CreateInstance(
-                serviceProvider,
+                scope.ServiceProvider,
                 migration.Type);
 
         await migrationInstance.RunAsync();
 
-        db.CodeMigrations.Add(CodeMigration.Create(migration.Id));
+        migrationDb.CodeMigrations.Add(CodeMigration.Create(migration.Id));
 
-        await db.SaveChangesAsync(cancellationToken);
+        await migrationDb.SaveChangesAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 
