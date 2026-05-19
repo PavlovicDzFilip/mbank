@@ -239,7 +239,6 @@ public sealed class CodeMigrationEngineTests
 
             var runnerScope = serviceProvider.CreateAsyncScope();
             var runner = new CodeMigrationRunner(
-                runnerScope.ServiceProvider.GetRequiredService<MemoryDbContext>(),
                 serviceProvider.GetRequiredService<IServiceScopeFactory>(),
                 runnerScope.ServiceProvider.GetRequiredService<ILogger<CodeMigrationRunner>>(),
                 typeof(CodeMigrationEngineTests).Assembly);

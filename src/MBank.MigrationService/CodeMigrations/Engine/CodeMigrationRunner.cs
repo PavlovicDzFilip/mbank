@@ -5,18 +5,16 @@ using Microsoft.EntityFrameworkCore;
 namespace MBank.MigrationService.CodeMigrations.Engine;
 
 internal sealed class CodeMigrationRunner(
-    MemoryDbContext db,
     IServiceScopeFactory serviceScopeFactory,
     ILogger<CodeMigrationRunner> logger)
 {
     private readonly Assembly _migrationAssembly = typeof(CodeMigrationRunner).Assembly;
 
     internal CodeMigrationRunner(
-        MemoryDbContext db,
         IServiceScopeFactory serviceScopeFactory,
         ILogger<CodeMigrationRunner> logger,
         Assembly migrationAssembly)
-        : this(db, serviceScopeFactory, logger)
+        : this(serviceScopeFactory, logger)
     {
         _migrationAssembly = migrationAssembly;
     }
@@ -30,12 +28,7 @@ internal sealed class CodeMigrationRunner(
             return;
         }
 
-        var appliedMigrations =
-            await db.CodeMigrations
-                .OrderBy(x => x.Id)
-                .ToListAsync(cancellationToken: cancellationToken);
-
-        var appliedMigrationIds = appliedMigrations.Select(x => x.Id).ToHashSet();
+        var appliedMigrationIds = await ReadAppliedMigrationIdsAsync(cancellationToken);
 
         foreach (var migration in migrations)
         {
@@ -48,6 +41,19 @@ internal sealed class CodeMigrationRunner(
             await RunMigrationAsync(migration, cancellationToken);
             appliedMigrationIds.Add(migration.Id);
         }
+    }
+
+    private async Task<HashSet<string>> ReadAppliedMigrationIdsAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = serviceScopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
+
+        var appliedMigrations =
+            await db.CodeMigrations
+                .OrderBy(x => x.Id)
+                .ToListAsync(cancellationToken: cancellationToken);
+
+        return appliedMigrations.Select(x => x.Id).ToHashSet();
     }
 
     private static IReadOnlyList<CodeMigrationDescriptor> DiscoverMigrations(Assembly assembly)
