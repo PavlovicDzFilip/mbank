@@ -81,7 +81,7 @@ Available endpoints:
 - `POST /admin/projects`
 - `POST /admin/project-tokens`
 
-Project tokens are returned once when created. Store only the returned token in client configuration; MBank stores its hash.
+Project tokens are returned once when created. Store only the returned token in client configuration; MBank stores its hash plus non-secret display prefix/suffix metadata.
 
 Example Codex repo-scoped MCP configuration:
 

@@ -18,6 +18,10 @@ public sealed class AccessToken
 
     public string TokenHash { get; private set; } = null!;
 
+    public string TokenPrefix { get; private set; } = null!;
+
+    public string TokenSuffix { get; private set; } = null!;
+
     public AccessTokenPermissions Permissions { get; private set; } = AccessTokenPermissions.Crud;
 
     public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.UtcNow;
@@ -45,10 +49,17 @@ public sealed class AccessToken
             ProjectId = projectId,
             Name = NormalizeName(name),
             Permissions = permissions,
-            TokenHash = RequiredText(tokenSecret.Hash, "Token hash", 128, nameof(tokenSecret))
+            TokenHash = RequiredText(tokenSecret.Hash, "Token hash", 128, nameof(tokenSecret)),
+            TokenPrefix = RequiredText(tokenSecret.Prefix, "Token prefix", 16, nameof(tokenSecret)),
+            TokenSuffix = RequiredText(tokenSecret.Suffix, "Token suffix", 16, nameof(tokenSecret))
         };
 
         return new IssuedAccessToken(accessToken, tokenSecret);
+    }
+
+    public void Revoke(DateTimeOffset? revokedAt = null)
+    {
+        RevokedAt ??= revokedAt ?? DateTimeOffset.UtcNow;
     }
 
     public static string NormalizeName(string name)

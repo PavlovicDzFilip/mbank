@@ -63,6 +63,41 @@ public sealed class AdminProvisioningTests(MBankWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.Created, tokenResponse.StatusCode);
         Assert.Equal("Crud", token["permissions"]!.GetValue<string>());
         Assert.StartsWith("mbp_", token["token"]!.GetValue<string>());
+        Assert.StartsWith("mbp_", token["tokenPrefix"]!.GetValue<string>());
+        Assert.Equal(4, token["tokenSuffix"]!.GetValue<string>().Length);
+    }
+
+    [Fact]
+    public async Task Admin_project_token_creation_grants_legacy_project_membership()
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestDatabase.AdminToken);
+
+        var user = await CreateUserAsync(client, "Ada", "ada@example.test");
+        var projectResponse = await client.PostAsJsonAsync("/admin/projects", new
+        {
+            name = "MBank"
+        });
+        var project = await ReadObjectAsync(projectResponse);
+
+        var tokenResponse = await client.PostAsJsonAsync("/admin/project-tokens", new
+        {
+            userId = user["id"]!.GetValue<Guid>(),
+            projectId = project["id"]!.GetValue<Guid>(),
+            name = "Codex repo token"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, tokenResponse.StatusCode);
+    }
+
+    private static async Task<JsonObject> CreateUserAsync(HttpClient client, string name, string email)
+    {
+        var response = await client.PostAsJsonAsync("/admin/users", new
+        {
+            name,
+            email
+        });
+        return await ReadObjectAsync(response);
     }
 
     private static async Task<JsonObject> ReadObjectAsync(HttpResponseMessage response)

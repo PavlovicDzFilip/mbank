@@ -54,10 +54,12 @@ internal sealed class TestDatabase : IAsyncDisposable
         await context.Database.ExecuteSqlRawAsync("DELETE FROM memories");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM source_records");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM access_tokens");
+        await context.Database.ExecuteSqlRawAsync("DELETE FROM project_memberships");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM projects");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM users");
         context.Users.Add(UserAccount.Create("Test User", "test@example.test", UserId));
         context.Projects.Add(Project.Create("Test Project", ProjectId));
+        context.ProjectMemberships.Add(ProjectMembership.Create(UserId, ProjectId));
         var issuedToken = AccessToken.Create(
             UserId,
             ProjectId,

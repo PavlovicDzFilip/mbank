@@ -9,6 +9,8 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
 
     public DbSet<Project> Projects => Set<Project>();
 
+    public DbSet<ProjectMembership> ProjectMemberships => Set<ProjectMembership>();
+
     public DbSet<AccessToken> AccessTokens => Set<AccessToken>();
 
     public DbSet<MemoryEntry> Memories => Set<MemoryEntry>();
@@ -44,7 +46,26 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
                 .HasConversion(id => id.Value, value => new ProjectId(value));
             entity.Property(x => x.Name)
                 .HasMaxLength(256);
-            entity.HasIndex(x => x.Name).IsUnique();
+            entity.HasIndex(x => x.Name);
+        });
+
+        modelBuilder.Entity<ProjectMembership>(entity =>
+        {
+            entity.ToTable("project_memberships");
+            entity.HasKey(x => new { x.UserId, x.ProjectId });
+            entity.Property(x => x.UserId)
+                .HasConversion(id => id.Value, value => new UserId(value));
+            entity.Property(x => x.ProjectId)
+                .HasConversion(id => id.Value, value => new ProjectId(value));
+            entity.HasIndex(x => x.ProjectId);
+            entity.HasOne<UserAccount>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Project>()
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AccessToken>(entity =>
@@ -61,9 +82,17 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
                 .HasMaxLength(256);
             entity.Property(x => x.TokenHash)
                 .HasMaxLength(128);
+            entity.Property(x => x.TokenPrefix)
+                .HasMaxLength(16);
+            entity.Property(x => x.TokenSuffix)
+                .HasMaxLength(16);
             entity.Property(x => x.Permissions).HasConversion<string>().HasMaxLength(64);
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.HasIndex(x => new { x.UserId, x.ProjectId, x.Name }).IsUnique();
+            entity.HasOne<ProjectMembership>()
+                .WithMany()
+                .HasForeignKey(x => new { x.UserId, x.ProjectId })
+                .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<UserAccount>()
                 .WithMany()
                 .HasForeignKey(x => x.UserId)

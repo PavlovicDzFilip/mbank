@@ -68,6 +68,16 @@ namespace MBank.Api.Data.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("TokenPrefix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("TokenSuffix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
@@ -224,10 +234,27 @@ namespace MBank.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
-                        .IsUnique();
+                    b.HasIndex("Name");
 
                     b.ToTable("projects", (string)null);
+                });
+
+            modelBuilder.Entity("MBank.Api.Domain.ProjectMembership", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "ProjectId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("project_memberships", (string)null);
                 });
 
             modelBuilder.Entity("MBank.Api.Domain.SourceRecord", b =>
@@ -302,6 +329,12 @@ namespace MBank.Api.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("MBank.Api.Domain.ProjectMembership", null)
+                        .WithMany()
+                        .HasForeignKey("UserId", "ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MBank.Api.Domain.MemoryEntry", b =>
@@ -335,6 +368,21 @@ namespace MBank.Api.Data.Migrations
                     b.HasOne("MBank.Api.Domain.MemoryEntry", null)
                         .WithMany()
                         .HasForeignKey("ToMemoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MBank.Api.Domain.ProjectMembership", b =>
+                {
+                    b.HasOne("MBank.Api.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MBank.Api.Domain.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

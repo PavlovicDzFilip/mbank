@@ -8,16 +8,24 @@ namespace MBank.Api.Domain;
 public sealed record AccessTokenSecret
 {
     private const string TokenPrefix = "mbp_";
+    private const int DisplayPrefixLength = 8;
+    private const int DisplaySuffixLength = 4;
 
     private AccessTokenSecret(string value)
     {
         Value = value;
         Hash = ComputeHash(value);
+        Prefix = value[..Math.Min(DisplayPrefixLength, value.Length)];
+        Suffix = value[^Math.Min(DisplaySuffixLength, value.Length)..];
     }
 
     public string Value { get; }
 
     public string Hash { get; }
+
+    public string Prefix { get; }
+
+    public string Suffix { get; }
 
     public static AccessTokenSecret Create()
     {

@@ -136,6 +136,14 @@ public static class AdminProvisioningEndpoints
             projectId,
             name,
             AccessTokenPermissions.Crud);
+        var membershipExists = await db.ProjectMemberships.AnyAsync(
+            x => x.UserId == userId && x.ProjectId == projectId,
+            cancellationToken);
+        if (!membershipExists)
+        {
+            db.ProjectMemberships.Add(ProjectMembership.Create(userId, projectId));
+        }
+
         db.AccessTokens.Add(issuedToken.AccessToken);
 
         await db.SaveChangesAsync(cancellationToken);
@@ -148,6 +156,8 @@ public static class AdminProvisioningEndpoints
                 issuedToken.AccessToken.ProjectId.Value,
                 issuedToken.AccessToken.Name,
                 issuedToken.AccessToken.Permissions,
+                issuedToken.AccessToken.TokenPrefix,
+                issuedToken.AccessToken.TokenSuffix,
                 issuedToken.Secret.Value,
                 issuedToken.AccessToken.CreatedAt));
     }
@@ -194,5 +204,7 @@ public sealed record ProjectTokenResponse(
     Guid ProjectId,
     string Name,
     AccessTokenPermissions Permissions,
+    string TokenPrefix,
+    string TokenSuffix,
     string Token,
     DateTimeOffset CreatedAt);
