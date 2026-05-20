@@ -87,7 +87,7 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task User_can_create_and_revoke_project_token_and_secret_is_shown_once()
+    public async Task User_can_create_and_delete_project_token_and_secret_is_shown_once()
     {
         var client = await CreateSignedInClientAsync("token.user@example.test");
         var createProject = await PostAntiforgeryFormAsync(
@@ -117,23 +117,21 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
         {
             var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
             var user = await db.Users.SingleAsync(x => x.Email == "token.user@example.test");
-            var token = await db.AccessTokens.SingleAsync(x => x.UserId == user.Id);
-            Assert.Null(token.RevokedAt);
+            Assert.Equal(1, await db.AccessTokens.CountAsync(x => x.UserId == user.Id));
         }
 
-        var revoke = await PostAntiforgeryFormAsync(
+        var delete = await PostAntiforgeryFormAsync(
             client,
             $"/projects/{projectId}",
             new Dictionary<string, string> { ["tokenId"] = await GetTokenIdAsync("token.user@example.test", projectId) },
-            "RevokeToken");
-        Assert.Equal(HttpStatusCode.Redirect, revoke.StatusCode);
+            "DeleteToken");
+        Assert.Equal(HttpStatusCode.Redirect, delete.StatusCode);
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
             var user = await db.Users.SingleAsync(x => x.Email == "token.user@example.test");
-            var token = await db.AccessTokens.SingleAsync(x => x.UserId == user.Id);
-            Assert.NotNull(token.RevokedAt);
+            Assert.Equal(0, await db.AccessTokens.CountAsync(x => x.UserId == user.Id));
         }
     }
 

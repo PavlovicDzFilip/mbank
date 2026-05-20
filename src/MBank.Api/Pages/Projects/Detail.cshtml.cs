@@ -144,7 +144,7 @@ public sealed class DetailModel(ProjectWorkspaceService workspace) : Authenticat
         }
     }
 
-    public async Task<IActionResult> OnPostRevokeTokenAsync(
+    public async Task<IActionResult> OnPostDeleteTokenAsync(
         Guid tokenId,
         CancellationToken cancellationToken)
     {
@@ -158,14 +158,14 @@ public sealed class DetailModel(ProjectWorkspaceService workspace) : Authenticat
             return NotFound();
         }
 
-        var revoked = await workspace.RevokeTokenAsync(
+        var deleted = await workspace.DeleteTokenAsync(
             userId,
             projectId,
             new AccessTokenId(tokenId),
             cancellationToken);
-        if (!revoked)
+        if (!deleted)
         {
-            return await ReloadAsync(userId, projectId, "Token could not be revoked.", cancellationToken);
+            return await ReloadAsync(userId, projectId, "Token could not be deleted.", cancellationToken);
         }
 
         return RedirectToPage(new { id = Id });

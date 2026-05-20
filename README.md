@@ -67,31 +67,6 @@ bearer_token_env_var = "MBANK_PROJECT_TOKEN"
 
 Mailpit's web UI and HTTP API are listed in the Aspire dashboard, which lets local automation verify that magic-link emails were received without mailbox credentials.
 
-## Alternative: Docker Compose and standalone API
-
-Use this only when you intentionally want to run the API outside AppHost, for example while working with `scripts\Port-LocalMemories.ps1` or other compose-based tooling.
-
-Start Postgres with pgvector:
-
-```powershell
-docker compose up -d
-```
-
-Apply the EF schema:
-
-```powershell
-dotnet ef database update --project src\MBank.Api\MBank.Api.csproj --startup-project src\MBank.Api\MBank.Api.csproj
-```
-
-Run the API with the `http` launch profile:
-
-```powershell
-$env:MBANK_ADMIN_TOKEN = "<admin-token>"
-dotnet run --project src\MBank.Api\MBank.Api.csproj --launch-profile http
-```
-
-That profile binds to `http://localhost:5221`. The same paths listed above apply on that base URL.
-
 ## Provisioning
 
 Admin provisioning endpoints require:
@@ -109,22 +84,6 @@ Available endpoints:
 Project tokens are returned once when created. Store only the returned token in client configuration; MBank stores its hash plus non-secret display prefix/suffix metadata.
 
 Set `MBANK_PROJECT_TOKEN` to a project token created in the UI or through the admin endpoint. `/mcp` rejects requests without a valid project token. Point your MCP client at `<api-base-url>/mcp` (see Aspire dashboard when running locally).
-
-## Local Memory Porting
-
-To preserve memories from the old unscoped local durable database, export before applying the project-token schema migration:
-
-```powershell
-.\scripts\Port-LocalMemories.ps1 -Mode Export
-```
-
-After provisioning the target user/project in the new database, import the export into that scope:
-
-```powershell
-.\scripts\Port-LocalMemories.ps1 -Mode Import -File .\artifacts\mbank-local-memory-export-YYYYMMDD-HHMMSS.json -UserId <user-id> -ProjectId <project-id>
-```
-
-The porting script preserves memory, source, and link IDs, and adds the target `UserId`/`ProjectId` during import.
 
 ## MCP Tools
 

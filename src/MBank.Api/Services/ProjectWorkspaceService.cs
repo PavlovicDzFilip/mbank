@@ -131,7 +131,7 @@ public sealed class ProjectWorkspaceService(MemoryDbContext db)
         return issuedToken;
     }
 
-    public async Task<bool> RevokeTokenAsync(
+    public async Task<bool> DeleteTokenAsync(
         UserId userId,
         ProjectId projectId,
         AccessTokenId tokenId,
@@ -140,12 +140,12 @@ public sealed class ProjectWorkspaceService(MemoryDbContext db)
         var token = await db.AccessTokens.FirstOrDefaultAsync(
             x => x.Id == tokenId && x.UserId == userId && x.ProjectId == projectId,
             cancellationToken);
-        if (token is null || token.RevokedAt is not null)
+        if (token is null)
         {
             return false;
         }
 
-        token.Revoke();
+        db.AccessTokens.Remove(token);
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }

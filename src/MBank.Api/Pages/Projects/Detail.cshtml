@@ -2,7 +2,7 @@
 @model MBank.Api.Pages.Projects.DetailModel
 @{
     ViewData["Title"] = Model.Project?.Name ?? "Project";
-    var activeTokenCount = Model.Tokens.Count(x => x.RevokedAt is null);
+    var tokenCount = Model.Tokens.Count;
 }
 
 <main class="app-shell workspace">
@@ -24,7 +24,7 @@
                         <h1>@Model.Project.Name</h1>
                         <p class="lede">
                             Created @Model.Project.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")
-                            · @activeTokenCount active token@(activeTokenCount == 1 ? "" : "s")
+                            · @tokenCount token@(tokenCount == 1 ? "" : "s")
                         </p>
                     </div>
                 </div>
@@ -67,37 +67,29 @@
                     <ul class="data-list data-list-dense">
                         @foreach (var token in Model.Tokens)
                         {
-                            var revokeDialogId = $"revoke-token-{token.Id.Value}";
+                            var deleteDialogId = $"delete-token-{token.Id.Value}";
                             <li class="token-item">
                                 <div class="token-item-main">
                                     <span class="data-row-title">@token.Name</span>
                                     <span class="token-mask">@token.TokenPrefix&hellip;@token.TokenSuffix</span>
                                 </div>
                                 <span class="token-item-meta">@token.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
-                                @if (token.RevokedAt is not null)
-                                {
-                                    <span class="badge badge-muted">Revoked</span>
-                                }
-                                else
-                                {
-                                    <span class="badge badge-live">Active</span>
-                                    <button type="button" class="btn btn-ghost btn-sm" data-dialog-open="@revokeDialogId">Revoke</button>
-                                    <dialog id="@revokeDialogId" class="app-dialog">
-                                        <form method="post" asp-page-handler="RevokeToken" class="dialog-form">
-                                            <input type="hidden" name="tokenId" value="@token.Id.Value" />
-                                            <div class="dialog-head">
-                                                <h2>Revoke token?</h2>
-                                                <p class="dialog-copy">
-                                                    <strong>@token.Name</strong> will stop working in MCP clients immediately.
-                                                </p>
-                                            </div>
-                                            <div class="dialog-actions">
-                                                <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
-                                                <button type="submit" class="btn btn-danger">Revoke</button>
-                                            </div>
-                                        </form>
-                                    </dialog>
-                                }
+                                <button type="button" class="btn btn-ghost btn-sm" data-dialog-open="@deleteDialogId">Delete</button>
+                                <dialog id="@deleteDialogId" class="app-dialog">
+                                    <form method="post" asp-page-handler="DeleteToken" class="dialog-form">
+                                        <input type="hidden" name="tokenId" value="@token.Id.Value" />
+                                        <div class="dialog-head">
+                                            <h2>Delete token?</h2>
+                                            <p class="dialog-copy">
+                                                <strong>@token.Name</strong> will be removed permanently. MCP clients using it will stop working immediately.
+                                            </p>
+                                        </div>
+                                        <div class="dialog-actions">
+                                            <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
+                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                        </div>
+                                    </form>
+                                </dialog>
                             </li>
                         }
                     </ul>

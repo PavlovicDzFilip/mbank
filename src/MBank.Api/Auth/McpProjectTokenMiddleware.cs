@@ -21,7 +21,7 @@ public sealed class McpProjectTokenMiddleware(RequestDelegate next)
             .FirstOrDefaultAsync(x => x.TokenHash == tokenHash && x.RevokedAt == null, httpContext.RequestAborted);
         if (accessToken is null)
         {
-            await WriteUnauthorizedAsync(httpContext, "Invalid or revoked MBank project access token.");
+            await WriteUnauthorizedAsync(httpContext, "Invalid MBank project access token.");
             return;
         }
 
