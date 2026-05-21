@@ -10,7 +10,6 @@ internal sealed class TestDatabase : IAsyncDisposable
     public static readonly UserId UserId = new(Guid.Parse("11111111-1111-7111-8111-111111111111"));
     public static readonly ProjectId ProjectId = new(Guid.Parse("22222222-2222-7222-8222-222222222222"));
     public const string ProjectToken = "mbp_test_project_token";
-    public const string AdminToken = "test-admin-token";
 
     private readonly PostgreSqlContainer _container;
 

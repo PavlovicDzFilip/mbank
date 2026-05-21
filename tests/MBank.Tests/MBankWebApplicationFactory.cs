@@ -53,8 +53,7 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
                 ["Smtp:Host"] = "localhost",
                 ["Smtp:Port"] = "1025",
                 ["Smtp:FromAddress"] = "noreply@example.test",
-                ["MagicLink:LifetimeMinutes"] = "15",
-                ["MBANK_ADMIN_TOKEN"] = TestDatabase.AdminToken
+                ["MagicLink:LifetimeMinutes"] = "15"
             });
         });
 

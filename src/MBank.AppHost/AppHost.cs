@@ -1,9 +1,5 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var adminToken = builder.AddParameterFromConfiguration(
-    "mbankAdminToken",
-    "Parameters:mbankAdminToken",
-    secret: true);
 var openAiApiKey = builder.AddParameterFromConfiguration(
     "openaiApiKey",
     "Parameters:openaiApiKey",
@@ -37,7 +33,6 @@ builder.AddProject<Projects.MBank_Api>("api", options =>
         options.LaunchProfileName = "aspire";
     })
     .WithReference(memoryDb)
-    .WithEnvironment("MBANK_ADMIN_TOKEN", adminToken)
     .WithEnvironment("OpenAI__ApiKey", openAiApiKey)
     .WithEnvironment("Smtp__Host", mailpit.GetEndpoint("smtp").Property(EndpointProperty.Host))
     .WithEnvironment("Smtp__Port", mailpit.GetEndpoint("smtp").Property(EndpointProperty.Port))

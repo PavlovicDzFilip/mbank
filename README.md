@@ -9,13 +9,13 @@ MCP-first memory storage and retrieval for AI agents.
 - EF Core persistence with Postgres and pgvector.
 - OpenAI `text-embedding-3-small` embeddings.
 - Magic-link login at `/login`.
-- Legacy bearer-protected admin provisioning endpoints exist for users, projects, and project tokens.
+- Signed-in project workspace at `/projects` for users, projects, and project tokens.
 
 ## Prerequisites
 
 - .NET SDK 10.0.201 or compatible.
 - Docker Desktop running with the Linux engine enabled.
-- AppHost user secrets configured for `Parameters:mbankAdminToken` and `Parameters:openaiApiKey`.
+- AppHost user secrets configured for `Parameters:openaiApiKey`.
 
 ## Run Locally With Aspire
 
@@ -24,7 +24,6 @@ Aspire is the local runtime for MBank. Each worktree should run its own AppHost 
 Configure AppHost secrets once per worktree:
 
 ```powershell
-dotnet user-secrets --project src\MBank.AppHost\MBank.AppHost.csproj set "Parameters:mbankAdminToken" "<admin-token>"
 dotnet user-secrets --project src\MBank.AppHost\MBank.AppHost.csproj set "Parameters:openaiApiKey" "<openai-api-key>"
 ```
 
@@ -46,7 +45,7 @@ From the dashboard:
 
 | Resource | Use for |
 | --- | --- |
-| `api` HTTP endpoint | MBank base URL (`/`, `/login`, `/projects`, `/mcp`, admin routes) |
+| `api` HTTP endpoint | MBank base URL (`/`, `/login`, `/projects`, `/mcp`) |
 | `mailpit` HTTP endpoint | Reading magic-link sign-in emails in development |
 
 Common paths on the `api` base URL:
@@ -69,21 +68,9 @@ Mailpit's web UI and HTTP API are listed in the Aspire dashboard, which lets loc
 
 ## Provisioning
 
-Admin provisioning endpoints require:
+Sign in at `/login`, then create projects and project tokens in `/projects`. Project tokens are returned once when created. Store only the returned token in client configuration; MBank stores its hash plus non-secret display prefix/suffix metadata.
 
-```text
-Authorization: Bearer <admin-token>
-```
-
-Available endpoints:
-
-- `POST /admin/users`
-- `POST /admin/projects`
-- `POST /admin/project-tokens`
-
-Project tokens are returned once when created. Store only the returned token in client configuration; MBank stores its hash plus non-secret display prefix/suffix metadata.
-
-Set `MBANK_PROJECT_TOKEN` to a project token created in the UI or through the admin endpoint. `/mcp` rejects requests without a valid project token. Point your MCP client at `<api-base-url>/mcp` (see Aspire dashboard when running locally).
+Set `MBANK_PROJECT_TOKEN` to a project token created in the UI. `/mcp` rejects requests without a valid project token. Point your MCP client at `<api-base-url>/mcp` (see Aspire dashboard when running locally).
 
 ## MCP Tools
 

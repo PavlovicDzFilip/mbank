@@ -160,11 +160,11 @@ $importSql = @"
 DO `$`$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM users WHERE "Id" = '$UserId'::uuid) THEN
-        RAISE EXCEPTION 'Target user % does not exist. Create it through /admin/users first.', '$UserId';
+        RAISE EXCEPTION 'Target user % does not exist. Create the user in the MBank UI first.', '$UserId';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM projects WHERE "Id" = '$ProjectId'::uuid) THEN
-        RAISE EXCEPTION 'Target project % does not exist. Create it through /admin/projects first.', '$ProjectId';
+        RAISE EXCEPTION 'Target project % does not exist. Create the project in the MBank UI first.', '$ProjectId';
     END IF;
 END
 `$`$;
