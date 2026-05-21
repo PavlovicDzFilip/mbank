@@ -47,6 +47,7 @@ docker compose --profile mbank-migrate run --rm mbank-migrate
 docker compose up -d --no-deps --force-recreate mbank-api
 "@
 
+$remoteScript = $remoteScript -replace "`r`n", "`n"
 $remoteScript | ssh $sshTarget "bash -s"
 Assert-Success "remote deploy"
 
