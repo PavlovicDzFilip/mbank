@@ -57,6 +57,7 @@ builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddSingleton<AgentInstructionService>();
 builder.Services.AddScoped<MagicLinkAuthenticationService>();
 builder.Services.AddScoped<ProjectWorkspaceService>();
+builder.Services.AddScoped<MemoryWorkspaceService>();
 builder.Services.AddScoped<MemoryService>();
 builder.Services.AddScoped<MemoryScopeProvider>();
 

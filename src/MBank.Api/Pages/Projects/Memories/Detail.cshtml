@@ -1,0 +1,135 @@
+@page "/projects/{id:guid}/memories/{memoryId:guid}"
+@model MBank.Api.Pages.Projects.Memories.DetailModel
+@using MBank.Api.Domain
+@{
+    ViewData["Title"] = "Memory";
+    var memory = Model.Memory;
+    var headline = memory?.Subject ?? memory?.Type.Value ?? "Memory";
+}
+
+<main class="app-shell workspace">
+    <section class="workspace-frame">
+        @if (Model.Project is null || memory is null)
+        {
+            <div class="alert alert-error" role="alert">Memory not found.</div>
+        }
+        else
+        {
+            <header class="workspace-header workspace-header-stack">
+                <nav class="breadcrumb" aria-label="Breadcrumb">
+                    <a asp-page="/Projects/Index">Projects</a>
+                    <span aria-hidden="true">/</span>
+                    <a asp-page="/Projects/Detail" asp-route-id="@Model.Project.Id.Value">@Model.Project.Name</a>
+                    <span aria-hidden="true">/</span>
+                    <a asp-page="/Projects/Memories/Index" asp-route-id="@Model.Project.Id.Value">Memories</a>
+                    <span aria-hidden="true">/</span>
+                    <span>@headline</span>
+                </nav>
+                <div class="workspace-title-row">
+                    <div>
+                        <h1>@headline</h1>
+                        <p class="lede memory-id-line">
+                            <span class="badge @(memory.Status == MemoryEntry.ActiveStatus ? "badge-live" : "badge-muted")">@memory.Status</span>
+                            <span class="badge badge-muted">@memory.Type.Value</span>
+                            <span>Confidence @memory.Confidence.ToString("0.##")</span>
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            @if (memory.Status == MemoryEntry.SupersededStatus)
+            {
+                <div class="alert alert-warn" role="status">
+                    <p class="alert-title">Superseded</p>
+                    <p class="alert-copy">This memory is hidden from normal agent retrieval but remains visible here for audit.</p>
+                </div>
+            }
+
+            @if (Model.HasConflictLinks)
+            {
+                <div class="alert alert-warn" role="status">
+                    <p class="alert-title">Conflict cluster</p>
+                    <p class="alert-copy">This memory is linked to others that may disagree. Resolve conflicts through MCP after clarifying with your team.</p>
+                </div>
+            }
+
+            <section class="workspace-section memory-detail-section">
+                <p class="memory-summary">@memory.Summary</p>
+                @if (memory.Tags.Count > 0)
+                {
+                    <ul class="tag-list" aria-label="Tags">
+                        @foreach (var tag in memory.Tags)
+                        {
+                            <li><span class="tag-chip">@tag</span></li>
+                        }
+                    </ul>
+                }
+                <p class="memory-meta">
+                    Created @memory.CreatedAt.ToLocalTime().ToString("MMM d, yyyy HH:mm")
+                    · Updated @memory.UpdatedAt.ToLocalTime().ToString("MMM d, yyyy HH:mm")
+                    · <code class="memory-id">@memory.Id</code>
+                </p>
+            </section>
+
+            @if (memory.Source is not null)
+            {
+                <section class="workspace-section">
+                    <div class="section-toolbar">
+                        <div>
+                            <h2 class="section-title">Source evidence</h2>
+                            @if (!string.IsNullOrWhiteSpace(memory.Source.SourceKind))
+                            {
+                                <p class="section-copy">@memory.Source.SourceKind</p>
+                            }
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(memory.Source.SourceUrl))
+                    {
+                        <p class="source-link-row"><a href="@memory.Source.SourceUrl" rel="noopener noreferrer">@memory.Source.SourceUrl</a></p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(memory.Source.ConversationUrl))
+                    {
+                        <p class="source-link-row"><a href="@memory.Source.ConversationUrl" rel="noopener noreferrer">@memory.Source.ConversationUrl</a></p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(memory.Source.SourceText))
+                    {
+                        <pre class="source-block">@memory.Source.SourceText</pre>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(memory.Source.MetadataJson))
+                    {
+                        <details class="disclosure">
+                            <summary>Metadata</summary>
+                            <pre class="source-block">@memory.Source.MetadataJson</pre>
+                        </details>
+                    }
+                </section>
+            }
+
+            @if (memory.Links.Count > 0)
+            {
+                <section class="workspace-section">
+                    <div class="section-toolbar">
+                        <div>
+                            <h2 class="section-title">Linked memories</h2>
+                            <p class="section-copy">Relations recorded for conflicts or supersession.</p>
+                        </div>
+                    </div>
+                    <ul class="data-list data-list-dense link-list">
+                        @foreach (var link in memory.Links)
+                        {
+                            var relationClass = link.Relation == MemoryLink.ConflictRelation ? "badge-warn" : "badge-muted";
+                            <li class="link-item">
+                                <span class="badge @relationClass">@link.Relation</span>
+                                <a class="data-row-title" asp-page="/Projects/Memories/Detail" asp-route-id="@Model.Project.Id.Value" asp-route-memoryId="@link.MemoryId">@link.MemoryId</a>
+                                @if (!string.IsNullOrWhiteSpace(link.Description))
+                                {
+                                    <span class="link-description">@link.Description</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+        }
+    </section>
+</main>

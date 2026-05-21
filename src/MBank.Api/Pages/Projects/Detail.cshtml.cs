@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MBank.Api.Pages.Projects;
 
-public sealed class DetailModel(ProjectWorkspaceService workspace) : AuthenticatedPageModel
+public sealed class DetailModel(
+    ProjectWorkspaceService workspace,
+    MemoryWorkspaceService memories) : AuthenticatedPageModel
 {
     [BindProperty(SupportsGet = true)]
     public Guid Id { get; set; }
@@ -12,6 +14,8 @@ public sealed class DetailModel(ProjectWorkspaceService workspace) : Authenticat
     public Project? Project { get; private set; }
 
     public IReadOnlyList<AccessToken> Tokens { get; private set; } = [];
+
+    public int? MemoryCount { get; private set; }
 
     [BindProperty]
     public string Name { get; set; } = string.Empty;
@@ -47,6 +51,7 @@ public sealed class DetailModel(ProjectWorkspaceService workspace) : Authenticat
 
         Name = Project.Name;
         Tokens = await workspace.ListTokensAsync(userId, projectId, cancellationToken);
+        MemoryCount = await memories.GetMemoryCountAsync(userId, projectId, cancellationToken);
         IssuedToken = TempData["IssuedToken"] as string;
         return Page();
     }
@@ -208,6 +213,7 @@ public sealed class DetailModel(ProjectWorkspaceService workspace) : Authenticat
         }
 
         Tokens = await workspace.ListTokensAsync(userId, projectId, cancellationToken);
+        MemoryCount = await memories.GetMemoryCountAsync(userId, projectId, cancellationToken);
         return Page();
     }
 }

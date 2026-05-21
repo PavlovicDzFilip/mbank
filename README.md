@@ -13,7 +13,7 @@ MCP-first memory storage and retrieval for AI agents.
 
 ## Prerequisites
 
-- .NET SDK 10.0.201 or compatible.
+- .NET SDK 10.0.107 or compatible.
 - Docker Desktop running with the Linux engine enabled.
 - AppHost user secrets configured for `Parameters:openaiApiKey`.
 
@@ -53,7 +53,11 @@ Common paths on the `api` base URL:
 - `/` redirects to `/login`, or to `/projects` when you are already signed in.
 - `/login` is the magic-link sign-in screen.
 - `/projects` is the signed-in project workspace.
+- `/projects/{id}/memories` lists stored memories for a project (read-only).
+- `/projects/{id}/memories/{memoryId}` shows full memory detail, source evidence, and links.
 - `/mcp` is the MCP endpoint.
+
+Signed-in project members can browse memories in the UI to verify what agents stored, inspect sources, and spot conflicts or superseded entries. Memory creation and conflict resolution remain MCP-only.
 
 Example MCP client configuration (replace the host with the current `api` HTTP endpoint from the dashboard):
 

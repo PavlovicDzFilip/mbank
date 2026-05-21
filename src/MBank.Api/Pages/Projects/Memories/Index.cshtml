@@ -1,0 +1,103 @@
+@page "/projects/{id:guid}/memories"
+@model MBank.Api.Pages.Projects.Memories.IndexModel
+@using MBank.Api.Domain
+@{
+    ViewData["Title"] = Model.Project is null ? "Memories" : $"{Model.Project.Name} memories";
+    var list = Model.List;
+    var totalCount = list?.TotalCount ?? 0;
+}
+
+<main class="app-shell workspace">
+    <section class="workspace-frame">
+        @if (Model.Project is null)
+        {
+            <div class="alert alert-error" role="alert">Project not found.</div>
+        }
+        else
+        {
+            <header class="workspace-header workspace-header-stack">
+                <nav class="breadcrumb" aria-label="Breadcrumb">
+                    <a asp-page="/Projects/Index">Projects</a>
+                    <span aria-hidden="true">/</span>
+                    <a asp-page="/Projects/Detail" asp-route-id="@Model.Project.Id.Value">@Model.Project.Name</a>
+                    <span aria-hidden="true">/</span>
+                    <span>Memories</span>
+                </nav>
+                <div class="workspace-title-row">
+                    <div>
+                        <h1>Memories</h1>
+                        <p class="lede">
+                            @totalCount stored · read-only inspection
+                            @if (list is not null && list.TotalPages > 1)
+                            {
+                                <span> · page @list.Page of @list.TotalPages</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            <form method="get" class="memory-filter-form" asp-route-id="@Model.Project.Id.Value">
+                <label class="filter-toggle">
+                    <input type="checkbox" name="includeSuperseded" value="true" checked="@(Model.IncludeSuperseded ? "checked" : null)" onchange="this.form.submit()" />
+                    Show superseded
+                </label>
+            </form>
+
+            @if (list is null || list.Items.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>No memories in this project yet.</p>
+                    <p class="section-copy">Agents store memories through MCP; they will appear here after <code>remember</code> runs.</p>
+                </div>
+            }
+            else
+            {
+                <ul class="data-list memory-list" aria-label="Project memories">
+                    @foreach (var memory in list.Items)
+                    {
+                        var statusClass = memory.Status == MemoryEntry.ActiveStatus ? "badge-live" : "badge-muted";
+                        <li>
+                            <a class="data-row memory-row" asp-page="/Projects/Memories/Detail" asp-route-id="@Model.Project.Id.Value" asp-route-memoryId="@memory.Id">
+                                <span class="memory-row-main">
+                                    <span class="memory-row-head">
+                                        <span class="badge @statusClass">@memory.Status</span>
+                                        <span class="badge badge-muted">@memory.Type</span>
+                                        @if (memory.HasConflictLinks)
+                                        {
+                                            <span class="badge badge-warn" title="Part of a recorded conflict">Conflict</span>
+                                        }
+                                    </span>
+                                    @if (!string.IsNullOrWhiteSpace(memory.Subject))
+                                    {
+                                        <span class="data-row-title">@memory.Subject</span>
+                                    }
+                                    <span class="memory-row-summary">@(memory.Summary.Length > 160 ? memory.Summary[..160] + "…" : memory.Summary)</span>
+                                </span>
+                                <span class="data-row-meta">@memory.UpdatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                <span class="data-row-chevron" aria-hidden="true">›</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+
+                @if (list.TotalCount > list.PageSize)
+                {
+                    <nav class="pagination" aria-label="Memory list pagination">
+                        <span class="pagination-copy">Showing @list.RangeStart–@list.RangeEnd of @list.TotalCount</span>
+                        <span class="pagination-actions">
+                            @if (list.Page > 1)
+                            {
+                                <a class="btn btn-ghost btn-sm" asp-page="/Projects/Memories/Index" asp-route-id="@Model.Project.Id.Value" asp-route-page="@(list.Page - 1)" asp-route-includeSuperseded="@Model.IncludeSuperseded">Previous</a>
+                            }
+                            @if (list.Page < list.TotalPages)
+                            {
+                                <a class="btn btn-ghost btn-sm" asp-page="/Projects/Memories/Index" asp-route-id="@Model.Project.Id.Value" asp-route-page="@(list.Page + 1)" asp-route-includeSuperseded="@Model.IncludeSuperseded">Next</a>
+                            }
+                        </span>
+                    </nav>
+                }
+            }
+        }
+    </section>
+</main>

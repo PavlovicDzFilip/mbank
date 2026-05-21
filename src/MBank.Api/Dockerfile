@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG SDK_VERSION=10.0.201
+ARG SDK_VERSION=10.0.107
 ARG ASPNET_VERSION=10.0
 
 FROM mcr.microsoft.com/dotnet/sdk:${SDK_VERSION} AS restore
