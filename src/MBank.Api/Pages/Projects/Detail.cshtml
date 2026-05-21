@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = Model.Project?.Name ?? "Project";
     var tokenCount = Model.Tokens.Count;
+    var memoryCount = Model.MemoryCount ?? 0;
 }
 
 <main class="app-shell workspace">
@@ -25,6 +26,7 @@
                         <p class="lede">
                             Created @Model.Project.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")
                             · @tokenCount token@(tokenCount == 1 ? "" : "s")
+                            · @memoryCount memor@(memoryCount == 1 ? "y" : "ies")
                         </p>
                     </div>
                 </div>
@@ -48,6 +50,20 @@
                     </div>
                 </div>
             }
+
+            <section class="workspace-section">
+                <div class="section-toolbar">
+                    <div>
+                        <h2 class="section-title">Memories</h2>
+                        <p class="section-copy">Read-only inspection of what MBank stored for this project.</p>
+                    </div>
+                    <a class="btn btn-primary btn-sm" asp-page="/Projects/Memories/Index" asp-route-id="@Model.Project.Id.Value">View memories</a>
+                </div>
+                @if (memoryCount == 0)
+                {
+                    <p class="empty-inline">No memories yet. Agents write via MCP.</p>
+                }
+            </section>
 
             <section class="workspace-section">
                 <div class="section-toolbar">

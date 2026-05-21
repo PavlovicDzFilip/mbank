@@ -650,6 +650,151 @@ button:hover {
   }
 }
 
+.badge-warn {
+  background: rgba(232, 196, 107, 0.14);
+  color: var(--amber);
+}
+
+.alert-warn {
+  background: rgba(232, 196, 107, 0.08);
+  border: 1px solid rgba(232, 196, 107, 0.28);
+  color: #f5e6b8;
+}
+
+.memory-filter-form {
+  margin-bottom: 14px;
+}
+
+.filter-toggle {
+  align-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 8px;
+}
+
+.filter-toggle input {
+  accent-color: var(--accent);
+  min-height: auto;
+  width: auto;
+}
+
+.memory-row {
+  align-items: flex-start;
+}
+
+.memory-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.memory-row-summary {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pagination {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.pagination-copy {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pagination-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.memory-summary {
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.memory-meta,
+.memory-id-line {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.memory-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.tag-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 11px;
+  padding: 3px 10px;
+}
+
+.source-link-row {
+  font-size: 12px;
+  margin: 0 0 8px;
+  word-break: break-all;
+}
+
+.source-link-row a {
+  color: var(--accent-strong);
+}
+
+.source-block {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.link-list .link-item {
+  align-items: baseline;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 10px 12px;
+}
+
+.link-description {
+  color: var(--muted);
+  font-size: 11px;
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 520px) {
   .auth-shell {
     padding: 18px;
