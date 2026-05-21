@@ -1,0 +1,84 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [master]
+
+concurrency:
+  group: mbank-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore MBank.slnx
+
+      - name: Lint (format)
+        run: dotnet format MBank.slnx --verify-no-changes --verbosity minimal
+
+      - name: Lint (build / analyzers)
+        run: dotnet build MBank.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/MBank.Tests/MBank.Tests.csproj -c Release --no-restore -p:UseAppHost=false
+
+      - name: Set image tag
+        id: meta
+        run: echo "image_tag=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: registry.engineeringwithfilip.com
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push api image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/MBank.Api/Dockerfile
+          target: api
+          push: true
+          tags: registry.engineeringwithfilip.com/mbank/api:${{ steps.meta.outputs.image_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push migrate image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/MBank.Api/Dockerfile
+          target: migrate
+          push: true
+          tags: registry.engineeringwithfilip.com/mbank/migrate:${{ steps.meta.outputs.image_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: 188.245.186.124
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /vault
+            test -f mbank.env
+            export MBANK_VERSION="${{ steps.meta.outputs.image_tag }}"
+            docker compose pull mbank-api mbank-migrate
+            docker compose --profile mbank-migrate run --rm mbank-migrate
+            docker compose up -d --no-deps --force-recreate mbank-api
+
+      - name: Smoke check
+        run: curl -fsS https://mbank.engineeringwithfilip.com/onboarding/agent-instructions | head -c 200

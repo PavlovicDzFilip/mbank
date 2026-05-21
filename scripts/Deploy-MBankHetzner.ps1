@@ -1,3 +1,4 @@
+# Emergency fallback only. Primary production deploy: .github/workflows/deploy.yml (GitHub Actions).
 $ErrorActionPreference = "Stop"
 
 $registry = "registry.engineeringwithfilip.com"

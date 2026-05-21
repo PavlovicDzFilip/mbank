@@ -35,7 +35,37 @@ dotnet run --project src\MBank.AppHost\MBank.AppHost.csproj
 
 The AppHost starts the Aspire dashboard, applies EF Core migrations through the `migrate` resource, then starts the `api` resource. Development magic-link email goes to the `mailpit` resource.
 
-Production deployment does not use the local AppHost. Use `scripts\Deploy-MBankHetzner.ps1` for the current Hetzner deploy path so unrelated production services are not touched.
+Production deployment does not use the local AppHost. Merging to `master` runs GitHub Actions (test, lint, build, deploy to Hetzner). Use `scripts\Deploy-MBankHetzner.ps1` only as an emergency fallback if Actions is unavailable.
+
+## Production deploy (GitHub Actions)
+
+Every pull request and merge-queue run executes **CI** (restore, `dotnet format`, Release build with analyzers, tests). Pushing to `master` after a merge runs **Deploy production**: the same checks, then Docker images tagged with UTC `yyyyMMddHHmmss`, registry push, SSH deploy in `/vault`, migrate, recreate `mbank-api`, and a smoke `curl` against `/onboarding/agent-instructions`.
+
+### One-time GitHub setup
+
+Repository secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `REGISTRY_USERNAME` | Push to `registry.engineeringwithfilip.com` |
+| `REGISTRY_PASSWORD` | Registry credentials |
+| `SSH_PRIVATE_KEY` | SSH key for production deploy |
+
+Enable a **merge queue** on `master` (branch protection) so when another PR merges while yours is queued, GitHub resets the queue entry and re-runs CI on the updated base. Without a merge queue, update your PR branch after `master` moves so CI runs on the latest code.
+
+### Server layout
+
+- Compose and `mbank.env` live on the host under `/vault` (not in this repo).
+- `mbank.env` shape: see `docs/mbank.env.example`.
+- Deploy sets `MBANK_VERSION` to the image tag; compose should reference `${MBANK_VERSION}` for `mbank/api` and `mbank/migrate`.
+
+### Verify or recover
+
+- **Actions:** check the latest *Deploy production* workflow run.
+- **On server:** `docker compose ps` in `/vault`; migrate logs from the last `mbank-migrate` run.
+- **Failed migration:** fix forward in code, merge to `master`, redeploy; do not recreate `mbank-api` until migrate succeeds (the workflow stops on migrate failure).
+- **Rollback (manual):** SSH to `/vault`, set `MBANK_VERSION` to a previous datetime tag, then `docker compose pull`, run migrate, recreate `mbank-api`.
+- **Rotate app secrets:** edit `mbank.env`, then `docker compose up -d --no-deps --force-recreate mbank-api`.
 
 ### URLs, UI, and MCP
 
