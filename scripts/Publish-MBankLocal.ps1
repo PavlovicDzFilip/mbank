@@ -44,7 +44,6 @@ $envPath = Join-Path $targetRoot ".env"
 if (-not (Test-Path $envPath)) {
     $envContent = @"
 POSTGRES_PASSWORD=$(New-Secret)
-MBANK_ADMIN_TOKEN=$(New-Secret)
 OPENAI_API_KEY=
 "@
     Write-TextFile $envPath $envContent
@@ -54,9 +53,6 @@ else {
     $envContent = Get-Content -LiteralPath $envPath
     $envContent = $envContent | Where-Object {
         ($_ -notlike "MCP_ACCESS_HEADER_NAME=*") -and ($_ -notlike "MCP_ACCESS_HEADER_VALUE=*")
-    }
-    if (-not ($envContent | Where-Object { $_ -like "MBANK_ADMIN_TOKEN=*" })) {
-        $envContent += "MBANK_ADMIN_TOKEN=$(New-Secret)"
     }
     Set-Content -LiteralPath $envPath -Value $envContent -Encoding UTF8
 }
@@ -92,7 +88,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__MemoryDb: Host=postgres;Port=5432;Database=mbank_local;Username=mbank;Password=`${POSTGRES_PASSWORD}
-      MBANK_ADMIN_TOKEN: `${MBANK_ADMIN_TOKEN}
       OpenAI__ApiKey: `${OPENAI_API_KEY}
       OpenAI__EmbeddingModel: text-embedding-3-small
       OpenAI__EmbeddingDimensions: "1536"
@@ -165,12 +160,6 @@ The MCP endpoint is:
 
 ```text
 http://localhost:5222/mcp
-```
-
-Admin provisioning endpoints require the `MBANK_ADMIN_TOKEN` value from `.env` as:
-
-```text
-Authorization: Bearer <MBANK_ADMIN_TOKEN>
 ```
 
 ## Manual publish/update

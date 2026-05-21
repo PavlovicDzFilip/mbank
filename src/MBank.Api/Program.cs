@@ -1,4 +1,3 @@
-using MBank.Api.Admin;
 using MBank.Api.Auth;
 using MBank.Api.Data;
 using MBank.Api.Mcp;
@@ -10,15 +9,6 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddEnvironmentVariables();
-
-builder.Services
-    .AddOptions<AdminAuthOptions>()
-    .Configure<IConfiguration>((options, configuration) =>
-    {
-        options.Token = configuration["MBANK_ADMIN_TOKEN"];
-    })
-    .Validate(options => !string.IsNullOrWhiteSpace(options.Token), "MBANK_ADMIN_TOKEN is required.")
-    .ValidateOnStart();
 
 builder.Services
     .AddOptions<OpenAiOptions>()
@@ -109,7 +99,6 @@ app.MapGet("/onboarding/agent-instructions", (AgentInstructionService agentInstr
     return Results.Text(block.Content, "text/markdown");
 });
 
-app.MapAdminProvisioningEndpoints();
 app.MapRazorPages();
 
 app.UseWhen(
