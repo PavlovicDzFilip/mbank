@@ -110,7 +110,8 @@ Set `MBANK_PROJECT_TOKEN` to a project token created in the UI. `/mcp` rejects r
 
 - `StartTask`: returns current MBank agent rules, working-style guidance, and instruction-file onboarding status for the current task.
 - `Remember`: stores durable product or implementation guidance as one or more atomic memories.
-- `GetTaskContext`: retrieves strong and possible memory matches for a structured task before planning or implementation.
+- `GetTaskContext`: retrieves strong and possible memory matches for the current focus at task start and when conversation focus shifts (including exploration). May return a `capture_offer` attention item for planning or exploration tasks.
+- `DescribeMemoryTypes`: returns memory types with `captureHint` guidance plus `captureOfferPolicy` for when to offer `remember` versus storing silently.
 - `Get`: fetches one memory with source evidence and linked memories.
 - `ReportConflict`: records that memories appear to conflict and should be clarified later.
 - `ResolveConflict`: marks clarified losing memories as superseded so normal retrieval no longer returns them, while preserving audit history.
@@ -162,7 +163,7 @@ Noninteractive usage is available with `--yes` or `-Yes`, but repo instruction u
 Manual block:
 
 ```md
-<!-- mbank:start version="1.0.4" -->
+<!-- mbank:start version="1.0.8" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
@@ -172,9 +173,17 @@ At the start of a new product, planning, implementation, debugging, or review ta
 1. Call `start_task` to retrieve current MBank agent rules and working-style guidance for this task.
 2. Follow the returned rules for the current task.
 3. If MBank reports that agent instruction files are missing or outdated, ask the user before updating files or running the bootstrap script.
-4. Call `get_task_context` with a structured task description before proposing a plan or making changes.
+4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
 
-Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
+Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; or when the user references prior decisions or constraints you have not yet retrieved for this focus. Skip re-calls for trivial same-focus follow-ups.
+
+Before proposing a plan, making changes, or answering substantive project-specific questions (including exploration), use memories from the latest `get_task_context` result for the current focus.
+
+Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
+
+## Offering to capture memory
+
+After substantive exploration (ideas, direction, tradeoffs, or what is possible), offer to store durable candidates using `captureHint` types from `describe_memory_types`, then call `remember` only after the user agrees. When `get_task_context` returns a `capture_offer` attention item, follow it after answering.
 
 Use `get` to inspect full memory details when a retrieved memory needs source context.
 

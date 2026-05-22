@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MBank.Api.Domain;
+using MBank.Api.Mcp;
 using MBank.Api.Services;
 
 namespace MBank.Tests;
@@ -16,6 +17,20 @@ public sealed class MemoryTypeTests
         Assert.All(MemoryType.Definitions, definition => Assert.False(string.IsNullOrWhiteSpace(definition.Description)));
         Assert.Contains(MemoryType.Definitions, x => x.Value == "product-risk" && x.IsWarning);
         Assert.Contains(MemoryType.Definitions, x => x.Value == "agent-instruction" && x.IsStartupGuidance);
+        Assert.Contains(MemoryType.Definitions, x => x.Value == "note" && !string.IsNullOrWhiteSpace(x.CaptureHint));
+        Assert.False(string.IsNullOrWhiteSpace(MemoryType.CaptureOfferPolicy));
+    }
+
+    [Fact]
+    public void DescribeMemoryTypes_returns_capture_offer_policy_and_capture_hints()
+    {
+        var response = MemoryTools.DescribeMemoryTypes();
+
+        Assert.Equal(MemoryType.ModelVersion, response.ModelVersion);
+        Assert.Equal(MemoryType.CaptureOfferPolicy, response.CaptureOfferPolicy);
+        Assert.Contains(response.Types, x => x.Value == "note" && !string.IsNullOrWhiteSpace(x.CaptureHint));
+        Assert.Contains(response.Types, x => x.Value == "product-open-question" && !string.IsNullOrWhiteSpace(x.CaptureHint));
+        Assert.Contains(response.Types, x => x.Value == "technical-rule" && x.CaptureHint is null);
     }
 
     [Fact]

@@ -18,7 +18,7 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = false, Destructive = false)]
-    [Description("Store durable product or implementation guidance that is likely to matter in future sessions. Each memory type must be one of the valid MemoryType values returned by describe_memory_types. Do not store ordinary conversation, temporary reasoning, or information only relevant to the current response. Send short atomic memories; include source text when available.")]
+    [Description("Store durable product or implementation guidance that is likely to matter in future sessions. Each memory type must be one of the valid MemoryType values returned by describe_memory_types. Do not call without user approval unless the user explicitly asks to store something. After exploration, offer capture first; on approval, store atomic memories using captureHint guidance from describe_memory_types. Do not store ordinary conversation, temporary reasoning, agent brainstorm output, or information only relevant to the current response. Send short atomic memories; include source text when available.")]
     public static Task<RememberResponse> Remember(
         MemoryService memoryService,
         [Description("One or more short atomic memories plus optional source evidence.")] RememberToolRequest request,
@@ -28,7 +28,7 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = true)]
-    [Description("Get relevant memories before planning or implementing a task. Call this at the start of product, planning, implementation, debugging, or review work. Strong matches may guide work; possible matches are hints to confirm before relying on them. Always inspect canProceed and attentionItems. If canProceed is false or any attention item has action=ask_user, stop and ask the user the provided question before planning or implementing. The response may also warn when MBank agent instruction files are missing or outdated; ask the user before updating files or running bootstrap scripts.")]
+    [Description("Get relevant memories for the current task focus. Call at task start and again whenever focus shifts (new topic, product area, technical subject, or phase) before answering substantive project-specific questions, including exploration. Skip on trivial same-focus follow-ups. Strong matches may guide work; possible matches are hints to confirm before relying on them. Always inspect canProceed and attentionItems. A capture_offer attention item means offer to store durable exploration outcomes after answering, then call remember only if the user agrees. If canProceed is false or any attention item has action=ask_user, stop and ask the user the provided question before planning or implementing. The response may also warn when MBank agent instruction files are missing or outdated; ask the user before updating files or running bootstrap scripts.")]
     public static Task<TaskContextResponse> GetTaskContext(
         MemoryService memoryService,
         [Description("Structured description of the task and optional work area.")] TaskContextRequest request,
@@ -68,12 +68,13 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = true)]
-    [Description("Describe the canonical MemoryType values accepted by remember, including descriptions and behavioral flags. Use this when choosing a memory type or validating that a type value is supported.")]
+    [Description("Describe the canonical MemoryType values accepted by remember, including descriptions, behavioral flags, and captureHint guidance for offering to store ideas or exploration outcomes. Also returns captureOfferPolicy for when to offer remember versus calling remember silently. Use this when choosing a memory type or preparing a capture offer.")]
     public static MemoryTypeCatalogResponse DescribeMemoryTypes()
     {
         return new MemoryTypeCatalogResponse(
             MemoryType.ModelVersion,
-            MemoryType.Definitions);
+            MemoryType.Definitions,
+            MemoryType.CaptureOfferPolicy);
     }
 
     [McpServerTool(ReadOnly = true)]

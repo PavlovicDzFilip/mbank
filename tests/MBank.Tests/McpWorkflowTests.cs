@@ -200,6 +200,9 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             && x["question"]!.GetValue<string>().Contains("Which one should guide this task?", StringComparison.OrdinalIgnoreCase)
             && x["memoryIds"]!.AsArray().Any(id => id!.GetValue<Guid>() == decisionId)
             && x["memoryIds"]!.AsArray().Any(id => id!.GetValue<Guid>() == warningId));
+        Assert.Contains(attentionItems, x =>
+            x!["kind"]!.GetValue<string>() == "capture_offer"
+            && x["action"]!.GetValue<string>() == "notice");
 
         var detail = await CallToolAsync(client, getTool, new JsonObject
         {
