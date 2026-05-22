@@ -163,7 +163,7 @@ Noninteractive usage is available with `--yes` or `-Yes`, but repo instruction u
 Manual block:
 
 ```md
-<!-- mbank:start version="1.0.8" -->
+<!-- mbank:start version="1.0.9" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
@@ -180,6 +180,8 @@ Re-call `get_task_context` when conversation focus changes before answering subs
 Before proposing a plan, making changes, or answering substantive project-specific questions (including exploration), use memories from the latest `get_task_context` result for the current focus.
 
 Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
+
+For `technical-rule`, `technical-convention`, or `technical-preference`, consider mechanical enforcement (Roslyn analyzer, EditorConfig, linter, CI): recommend tooling first, then a short memory with the diagnostic or rule id.
 
 ## Offering to capture memory
 

@@ -18,7 +18,7 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = false, Destructive = false)]
-    [Description("Store durable product or implementation guidance that is likely to matter in future sessions. Each memory type must be one of the valid MemoryType values returned by describe_memory_types. Do not call without user approval unless the user explicitly asks to store something. After exploration, offer capture first; on approval, store atomic memories using captureHint guidance from describe_memory_types. Do not store ordinary conversation, temporary reasoning, agent brainstorm output, or information only relevant to the current response. Send short atomic memories; include source text when available.")]
+    [Description(MemoryAuthoringGuidance.RememberToolDescription)]
     public static Task<RememberResponse> Remember(
         MemoryService memoryService,
         [Description("One or more short atomic memories plus optional source evidence.")] RememberToolRequest request,

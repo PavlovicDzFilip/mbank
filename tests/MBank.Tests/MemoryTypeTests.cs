@@ -30,7 +30,14 @@ public sealed class MemoryTypeTests
         Assert.Equal(MemoryType.CaptureOfferPolicy, response.CaptureOfferPolicy);
         Assert.Contains(response.Types, x => x.Value == "note" && !string.IsNullOrWhiteSpace(x.CaptureHint));
         Assert.Contains(response.Types, x => x.Value == "product-open-question" && !string.IsNullOrWhiteSpace(x.CaptureHint));
-        Assert.Contains(response.Types, x => x.Value == "technical-rule" && x.CaptureHint is null);
+        Assert.Contains(response.Types, x =>
+            x.Value == "technical-rule"
+            && !string.IsNullOrWhiteSpace(x.CaptureHint)
+            && x.CaptureHint!.Contains("tooling", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.Types, x =>
+            x.Value == "technical-convention"
+            && !string.IsNullOrWhiteSpace(x.CaptureHint)
+            && x.CaptureHint!.Contains("analyzer", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
