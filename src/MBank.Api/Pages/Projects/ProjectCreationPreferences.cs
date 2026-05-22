@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace MBank.Api.Pages.Projects;
 
-internal static class ProjectCreationPreferences
+public static class ProjectCreationPreferences
 {
     public const string SeedStarterPackCookieName = "MBank.SeedStarterPack";
 
