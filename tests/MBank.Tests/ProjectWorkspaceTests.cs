@@ -26,6 +26,34 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task New_project_is_seeded_with_default_starter_pack_memories()
+    {
+        var client = await CreateSignedInClientAsync("starter.pack@example.test");
+
+        var create = await PostAntiforgeryFormAsync(
+            client,
+            "/projects",
+            new Dictionary<string, string> { ["Name"] = "Seeded Project" },
+            "Create");
+        Assert.Equal(HttpStatusCode.Redirect, create.StatusCode);
+        var projectId = ExtractProjectId(create.Headers.Location!.OriginalString);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
+        var user = await db.Users.SingleAsync(x => x.Email == "starter.pack@example.test");
+        var memories = await db.Memories
+            .Where(x => x.UserId == user.Id && x.ProjectId == new ProjectId(projectId))
+            .ToListAsync();
+
+        Assert.Equal(ProjectStarterPack.Memories.Count, memories.Count);
+        Assert.All(memories, memory => Assert.True(memory.Type.IsStartupGuidance));
+        Assert.Contains(memories, x => x.Type == MemoryType.AgentInstruction);
+        Assert.Contains(memories, x => x.Type == MemoryType.CollaborationPreference);
+        Assert.Contains(memories, x => x.Type == MemoryType.UserPreference);
+        Assert.Contains(memories, x => x.Type == MemoryType.ProjectPolicy);
+    }
+
+    [Fact]
     public async Task Signed_in_user_can_create_list_rename_and_delete_projects()
     {
         var client = await CreateSignedInClientAsync("owner@example.test");

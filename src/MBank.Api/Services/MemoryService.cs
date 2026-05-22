@@ -22,6 +22,46 @@ public sealed class MemoryService(
     private static readonly MemoryType[] StartupGuidanceTypes =
         MemoryType.List.Where(x => x.IsStartupGuidance).ToArray();
 
+    public async Task<int> SeedProjectStarterPackAsync(
+        UserId userId,
+        ProjectId projectId,
+        CancellationToken cancellationToken)
+    {
+        var source = SourceRecord.Create(
+            ProjectStarterPack.SourceKind,
+            "Seeded from the MBank default project starter pack.",
+            sourceUrl: null,
+            conversationUrl: null,
+            metadataJson: null);
+        db.SourceRecords.Add(source);
+
+        var seeded = 0;
+        foreach (var draft in ProjectStarterPack.Memories)
+        {
+            ValidateDraft(draft);
+            var tags = NormalizeTags(draft.Tags);
+            var searchText = BuildMemorySearchText(draft.Type, draft.Summary, draft.Subject, tags, source.SourceText);
+            var vector = new Vector(await embeddings.GenerateEmbeddingAsync(searchText, cancellationToken));
+
+            db.Memories.Add(MemoryEntry.Create(
+                userId,
+                projectId,
+                draft.Type,
+                draft.Summary,
+                draft.Subject,
+                tags,
+                draft.Confidence ?? 0.95,
+                searchText,
+                vector,
+                source.Id));
+
+            seeded++;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return seeded;
+    }
+
     public async Task<RememberResponse> RememberAsync(RememberRequest request, CancellationToken cancellationToken)
     {
         var scope = RequireScope();
