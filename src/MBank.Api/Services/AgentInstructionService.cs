@@ -6,7 +6,7 @@ namespace MBank.Api.Services;
 public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration)
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
-    public const string LatestInstructionVersion = "1.0.8";
+    public const string LatestInstructionVersion = "1.0.9";
     public const string BootstrapScriptUrl = "https://mbank.dev/bootstrap-agent.sh";
 
     private static readonly string ValidMemoryTypeValues = string.Join(
@@ -23,6 +23,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         "Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.",
         "After substantive exploration (ideas, direction, tradeoffs), offer to store durable candidates using types suggested by captureHint—such as `note`, `product-open-question`, `product-strategy`, or `product-reasoning`. Do not auto-store brainstorm output or rejected options.",
         "When `get_task_context` returns a `capture_offer` attention item, follow it after answering: offer capture, then call `remember` only if the user agrees.",
+        "When calling `remember` for a technical-rule, technical-convention, or technical-preference, consider mechanical enforcement via repo tooling (Roslyn analyzer, EditorConfig, linter, or CI). If automatable, recommend implementing tooling first, then store a short memory with rationale and the diagnostic or rule identifier.",
         "Use `get` to inspect full memory details when a retrieved memory needs source context.",
         "When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.",
         "Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.",
@@ -68,6 +69,8 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         Use `describe_memory_types` when you need memory types, `captureHint` guidance, or `captureOfferPolicy` before offering or calling `remember`.
 
         When calling `remember`, set each memory type to one of these valid MemoryType values: {ValidMemoryTypeValues}. Do not invent new type values.
+
+        {MemoryAuthoringGuidance.CanonicalMechanicalEnforcementSection}
 
         Use `get` to inspect full memory details when a retrieved memory needs source context.
 

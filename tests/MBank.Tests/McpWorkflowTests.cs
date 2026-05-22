@@ -64,7 +64,12 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         var resolveConflictTool = ResolveToolName(tools, "ResolveConflict");
         var checkOnboardingTool = ResolveToolName(tools, "CheckOnboarding");
 
-        var rememberInputSchema = ResolveTool(tools, rememberTool)["inputSchema"]!.AsObject();
+        var rememberToolDefinition = ResolveTool(tools, rememberTool);
+        Assert.Contains(
+            rememberToolDefinition["description"]!.GetValue<string>(),
+            "Roslyn analyzer",
+            StringComparison.OrdinalIgnoreCase);
+        var rememberInputSchema = rememberToolDefinition["inputSchema"]!.AsObject();
         var memoryTypeSchema = rememberInputSchema["properties"]!["request"]!["properties"]!["memories"]!["items"]!["properties"]!["type"]!.AsObject();
         Assert.Equal("string", memoryTypeSchema["type"]!.GetValue<string>());
         Assert.Contains(memoryTypeSchema["enum"]!.AsArray(), x =>
@@ -96,6 +101,9 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         Assert.Contains(memoryTypesContent["types"]!.AsArray(), x =>
             x!["value"]!.GetValue<string>() == "agent-instruction"
             && x["isStartupGuidance"]!.GetValue<bool>());
+        Assert.Contains(memoryTypesContent["types"]!.AsArray(), x =>
+            x!["value"]!.GetValue<string>() == "technical-rule"
+            && !string.IsNullOrWhiteSpace(x["captureHint"]!.GetValue<string>()));
 
         var remember = await CallToolAsync(client, rememberTool, new JsonObject
         {

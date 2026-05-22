@@ -33,7 +33,7 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Do not recreate `CURRENT_WORK.md` or `PRODUCT_BOARD.md` unless the user explicitly asks for those files.
 - When durable continuity changes, store it through the configured `mbank` MCP server instead of writing planning notes to local continuity files.
 
-<!-- mbank:start version="1.0.8" -->
+<!-- mbank:start version="1.0.9" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
@@ -69,6 +69,10 @@ When `get_task_context` returns a `capture_offer` attention item, follow it afte
 Use `describe_memory_types` when you need memory types, `captureHint` guidance, or `captureOfferPolicy` before offering or calling `remember`.
 
 When calling `remember`, set each memory type to one of these valid MemoryType values: `product-strategy`, `product-decision`, `product-reasoning`, `product-requirement`, `product-constraint`, `product-risk`, `product-open-question`, `technical-architecture`, `technical-decision`, `technical-reasoning`, `technical-rule`, `technical-convention`, `technical-preference`, `technical-constraint`, `technical-risk`, `technical-open-question`, `implementation-result`, `validation-result`, `operational-status`, `operational-procedure`, `agent-instruction`, `project-policy`, `user-preference`, `collaboration-preference`, `note`. Do not invent new type values.
+
+## Mechanical enforcement for coding rules
+
+When calling `remember` for a `technical-rule`, `technical-convention`, or `technical-preference`, consider whether the repo can enforce it with tooling (Roslyn analyzer, EditorConfig, linter, or CI in this .NET solution). If yes, tell the user and recommend implementing that tooling first, then store a short memory with rationale and the diagnostic or rule identifier. Do not rely on memory alone for automatable rules. Keep nuanced exceptions in memory even when tooling exists.
 
 Use `get` to inspect full memory details when a retrieved memory needs source context.
 

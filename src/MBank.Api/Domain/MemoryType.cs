@@ -82,18 +82,20 @@ public sealed class MemoryType : SmartEnum<MemoryType, string>
     public static readonly MemoryType TechnicalRule = new(
         nameof(TechnicalRule),
         "technical-rule",
-        "A hard implementation rule, invariant, or coding convention agents must follow.");
+        "A hard implementation rule, invariant, or coding convention agents must follow.",
+        captureHint: "If the rule can be enforced by analyzers, EditorConfig, linter, or CI, suggest implementing tooling first and store a short memory with the diagnostic or rule id and rationale.");
 
     public static readonly MemoryType TechnicalConvention = new(
         nameof(TechnicalConvention),
         "technical-convention",
-        "An established codebase or engineering practice that should guide implementation.");
+        "An established codebase or engineering practice that should guide implementation.",
+        captureHint: "If the convention can be enforced by analyzers, EditorConfig, linter, or CI, suggest implementing tooling first and store a short memory with the diagnostic or rule id and rationale.");
 
     public static readonly MemoryType TechnicalPreference = new(
         nameof(TechnicalPreference),
         "technical-preference",
         "A softer technical style or implementation preference.",
-        captureHint: "Offer when the user states a durable technical style preference during exploration.");
+        captureHint: "Offer when the user states a durable technical style preference during exploration. If automatable via tooling, suggest implementing enforcement first and link the diagnostic or rule id in the memory.");
 
     public static readonly MemoryType TechnicalConstraint = new(
         nameof(TechnicalConstraint),
