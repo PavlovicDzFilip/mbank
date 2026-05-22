@@ -33,7 +33,11 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
         var create = await PostAntiforgeryFormAsync(
             client,
             "/projects",
-            new Dictionary<string, string> { ["Name"] = "Seeded Project" },
+            new Dictionary<string, string>
+            {
+                ["Name"] = "Seeded Project",
+                ["SeedStarterPack"] = "true"
+            },
             "Create");
         Assert.Equal(HttpStatusCode.Redirect, create.StatusCode);
         var projectId = ExtractProjectId(create.Headers.Location!.OriginalString);
@@ -51,6 +55,43 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
         Assert.Contains(memories, x => x.Type == MemoryType.CollaborationPreference);
         Assert.Contains(memories, x => x.Type == MemoryType.UserPreference);
         Assert.Contains(memories, x => x.Type == MemoryType.ProjectPolicy);
+    }
+
+    [Fact]
+    public async Task Create_project_dialog_offers_starter_pack_option()
+    {
+        var client = await CreateSignedInClientAsync("dialog.pref@example.test");
+        var page = await client.GetAsync("/projects");
+        var body = await page.Content.ReadAsStringAsync();
+
+        Assert.Contains("Include default agent guidance", body);
+        Assert.Contains("starter memories", body);
+    }
+
+    [Fact]
+    public async Task New_project_without_starter_pack_option_has_no_memories()
+    {
+        var client = await CreateSignedInClientAsync("unseeded@example.test");
+
+        var create = await PostAntiforgeryFormAsync(
+            client,
+            "/projects",
+            new Dictionary<string, string>
+            {
+                ["Name"] = "Empty Project",
+                ["SeedStarterPack"] = "false"
+            },
+            "Create");
+        Assert.Equal(HttpStatusCode.Redirect, create.StatusCode);
+        var projectId = ExtractProjectId(create.Headers.Location!.OriginalString);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
+        var user = await db.Users.SingleAsync(x => x.Email == "unseeded@example.test");
+        var count = await db.Memories.CountAsync(
+            x => x.UserId == user.Id && x.ProjectId == new ProjectId(projectId));
+
+        Assert.Equal(0, count);
     }
 
     [Fact]

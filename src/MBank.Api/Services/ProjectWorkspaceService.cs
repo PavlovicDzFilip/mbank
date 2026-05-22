@@ -22,6 +22,7 @@ public sealed class ProjectWorkspaceService(MemoryDbContext db, MemoryService me
     public async Task<Project> CreateProjectAsync(
         UserId userId,
         string name,
+        bool seedStarterPack,
         CancellationToken cancellationToken)
     {
         var project = Project.Create(name);
@@ -29,7 +30,10 @@ public sealed class ProjectWorkspaceService(MemoryDbContext db, MemoryService me
         db.ProjectMemberships.Add(ProjectMembership.Create(userId, project.Id));
         await db.SaveChangesAsync(cancellationToken);
 
-        await memories.SeedProjectStarterPackAsync(userId, project.Id, cancellationToken);
+        if (seedStarterPack)
+        {
+            await memories.SeedProjectStarterPackAsync(userId, project.Id, cancellationToken);
+        }
 
         return project;
     }

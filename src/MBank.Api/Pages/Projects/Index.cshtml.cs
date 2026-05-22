@@ -14,6 +14,10 @@ public sealed class IndexModel(ProjectWorkspaceService workspace) : Authenticate
     [Display(Name = "Project name")]
     public string Name { get; set; } = string.Empty;
 
+    [BindProperty]
+    [Display(Name = "Include default agent guidance")]
+    public bool SeedStarterPack { get; set; }
+
     public string? Error { get; private set; }
 
     public bool ShowCreateProject { get; private set; }
@@ -25,6 +29,7 @@ public sealed class IndexModel(ProjectWorkspaceService workspace) : Authenticate
             return Challenge();
         }
 
+        SeedStarterPack = ProjectCreationPreferences.GetSeedStarterPackDefault(Request);
         Projects = await workspace.ListProjectsAsync(userId, cancellationToken);
         return Page();
     }
@@ -43,7 +48,8 @@ public sealed class IndexModel(ProjectWorkspaceService workspace) : Authenticate
 
         try
         {
-            var project = await workspace.CreateProjectAsync(userId, Name, cancellationToken);
+            var project = await workspace.CreateProjectAsync(userId, Name, SeedStarterPack, cancellationToken);
+            ProjectCreationPreferences.RememberSeedStarterPackChoice(Request, Response, SeedStarterPack);
             return RedirectToPage("/Projects/Detail", new { id = project.Id.Value });
         }
         catch (ArgumentException)
