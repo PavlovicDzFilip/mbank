@@ -68,8 +68,10 @@ builder.Services
             MBank stores durable project memory and agent guidance for AI coding and product agents.
             At the start of any product, planning, implementation, debugging, or review task,
             call start_task and follow the returned rules for the current task.
-            Then call get_task_context before proposing a solution or making changes.
-            Use remember only for durable product or implementation guidance that should matter in future sessions, and use only valid MemoryType values returned by describe_memory_types.
+            Call get_task_context for the current focus at task start and re-call it when focus shifts
+            before substantive project-specific answers, including exploration.
+            Use remember only for durable guidance the user provided or explicitly agreed to store after an exploration offer.
+            After ideas or direction work, offer capture first; call remember only on approval. Use describe_memory_types for captureOfferPolicy and captureHint type guidance.
             Use get when a retrieved memory needs source evidence.
             Use report_conflict when memories disagree and surface the conflict to the user.
             Use resolve_conflict when the user clarifies which conflicting memory should remain authoritative.

@@ -81,7 +81,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             && x.Text.Contains("small, focused commits", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(response.Rules, x =>
             x.Text.StartsWith("MBank should make user working-style preferences", StringComparison.Ordinal));
-        Assert.Equal("Call `get_task_context` with this task's title, description, kind, and work area before planning or implementing.", response.NextStep);
+        Assert.Equal(
+            "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration.",
+            response.NextStep);
         Assert.True(response.Onboarding.RequiresExplicitApproval);
     }
 
@@ -260,6 +262,40 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             var current = response.StrongMatches.Single(x => x.Id == conflict.MemoryIds[1]);
             Assert.Equal(existing.Subject, current.Subject);
         });
+    }
+
+    [Fact]
+    public async Task GetTaskContext_includes_capture_offer_for_planning_kind()
+    {
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
+
+        var response = await service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Explore capture workflow",
+                "What options exist for offering to remember ideas after exploration?",
+                "planning"),
+            Limit: 3), CancellationToken.None);
+
+        Assert.Contains(response.AttentionItems, x =>
+            x.Kind == "capture_offer"
+            && x.Action == TaskContextAttentionAction.Notice);
+    }
+
+    [Fact]
+    public async Task GetTaskContext_skips_capture_offer_for_implementation_kind()
+    {
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
+
+        var response = await service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Implement capture offer",
+                "Add capture_offer attention item handling in the API.",
+                "implementation"),
+            Limit: 3), CancellationToken.None);
+
+        Assert.DoesNotContain(response.AttentionItems, x => x.Kind == "capture_offer");
     }
 
     [Fact]

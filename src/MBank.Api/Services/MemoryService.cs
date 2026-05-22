@@ -153,7 +153,7 @@ public sealed class MemoryService(
             "Loaded current MBank agent rules for this task. Instruction-file updates affect future task startup; use the returned rules now.",
             rules,
             agentInstructions.CheckOnboarding(),
-            "Call `get_task_context` with this task's title, description, kind, and work area before planning or implementing.");
+            "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration.");
     }
 
     public async Task<TaskContextResponse> GetTaskContextAsync(TaskContextRequest request, CancellationToken cancellationToken)
@@ -706,6 +706,11 @@ public sealed class MemoryService(
                 BuildConflictAttentionSummary(conflict, strongMatches),
                 "I found conflicting memories. Which one should guide this task?",
                 BuildConflictMemoryIds(conflict)));
+        }
+
+        if (TaskContextAttentionRules.ShouldOfferCapture(request.Task.Kind))
+        {
+            items.Add(TaskContextAttentionRules.CreateCaptureOfferItem());
         }
 
         return items;

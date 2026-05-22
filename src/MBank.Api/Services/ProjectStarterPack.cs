@@ -15,7 +15,7 @@ public static class ProjectStarterPack
     [
         new(
             MemoryType.AgentInstruction,
-            "At the start of product, planning, implementation, debugging, or review work, call `start_task` and follow its rules, then call `get_task_context` with a structured task description before proposing a plan or making changes.",
+            "At the start of product, planning, implementation, debugging, or review work, call `start_task` and follow its rules, then call `get_task_context` for the current focus. Re-call `get_task_context` when conversation focus changes before substantive project-specific answers, including exploration.",
             "MBank task startup",
             ["mbank", "mcp", "startup"],
             0.98),
@@ -33,9 +33,15 @@ public static class ProjectStarterPack
             0.98),
         new(
             MemoryType.AgentInstruction,
-            "Use `remember` only for durable product or implementation guidance likely to matter in future sessions. Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.",
+            "Use `remember` only for durable product or implementation guidance the user provided or explicitly agreed to store. Do not store ordinary conversation, temporary reasoning, agent brainstorm output, or details only relevant to the current response.",
             "Memory capture",
             ["mbank", "mcp", "remember"],
+            0.98),
+        new(
+            MemoryType.CollaborationPreference,
+            "After substantive exploration (ideas, direction, tradeoffs), offer to store durable candidates in MBank with suggested types from describe_memory_types captureHint. Call remember only after the user agrees.",
+            "Offer MBank capture after exploration",
+            ["mbank", "mcp", "remember", "exploration"],
             0.98),
         new(
             MemoryType.AgentInstruction,

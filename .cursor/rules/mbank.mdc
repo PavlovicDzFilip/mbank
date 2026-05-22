@@ -1,5 +1,5 @@
 ---
-description: Use MBank MCP for durable project memory; call start_task and get_task_context at every task start.
+description: Use MBank MCP for durable project memory; re-call get_task_context on focus change; offer remember after exploration.
 alwaysApply: true
 ---
 
@@ -7,7 +7,7 @@ alwaysApply: true
 
 Before your first response on any task in this workspace — including informational or meta questions — call the configured `mbank` MCP server as described below. Loading this rule or `AGENTS.md` does not invoke MBank; you must call the MCP tools.
 
-<!-- mbank:start version="1.0.6" -->
+<!-- mbank:start version="1.0.8" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
@@ -17,11 +17,30 @@ At the start of a new product, planning, implementation, debugging, or review ta
 1. Call `start_task` to retrieve current MBank agent rules and working-style guidance for this task.
 2. Follow the returned rules for the current task.
 3. If MBank reports that agent instruction files are missing or outdated, ask the user before updating files or running the bootstrap script.
-4. Call `get_task_context` with a structured task description before proposing a plan or making changes.
+4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
 
-Use `remember` when the user provides durable product or implementation guidance that is likely to matter in future sessions, such as product direction, architectural decisions, coding conventions, constraints, or next steps.
+Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; or when the user references prior decisions or constraints you have not yet retrieved for this focus. Skip re-calls for trivial same-focus follow-ups.
 
-Use `describe_memory_types` when you need to inspect the canonical MemoryType values, descriptions, or behavioral flags before calling `remember`.
+Before proposing a plan, making changes, or answering substantive project-specific questions (including exploration), use memories from the latest `get_task_context` result for the current focus.
+
+Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
+
+## Offering to capture memory
+
+After substantive exploration (ideas, direction, tradeoffs, or what is possible):
+
+1. Answer using `get_task_context` and the conversation.
+2. If durable candidates may matter in future sessions but were not explicitly committed, offer to store them in MBank. List one to three atomic candidates with suggested types (use `captureHint` from `describe_memory_types`).
+3. Call `remember` only after the user agrees or explicitly asks to store something.
+4. Do not store rejected options, agent speculation the user did not adopt, or ordinary chat.
+
+Suggested types for offer candidates: `note` for vague ideas; `product-open-question` or `technical-open-question` for unresolved options; `product-strategy` or `product-reasoning` for tentative direction; `product-decision` or `technical-decision` only when the user has clearly chosen.
+
+Skip the offer when nothing is plausibly durable or the thread was purely meta.
+
+When `get_task_context` returns a `capture_offer` attention item, follow it after answering.
+
+Use `describe_memory_types` when you need memory types, `captureHint` guidance, or `captureOfferPolicy` before offering or calling `remember`.
 
 When calling `remember`, set each memory type to one of these valid MemoryType values: `product-strategy`, `product-decision`, `product-reasoning`, `product-requirement`, `product-constraint`, `product-risk`, `product-open-question`, `technical-architecture`, `technical-decision`, `technical-reasoning`, `technical-rule`, `technical-convention`, `technical-preference`, `technical-constraint`, `technical-risk`, `technical-open-question`, `implementation-result`, `validation-result`, `operational-status`, `operational-procedure`, `agent-instruction`, `project-policy`, `user-preference`, `collaboration-preference`, `note`. Do not invent new type values.
 

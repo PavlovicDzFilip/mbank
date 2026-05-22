@@ -317,4 +317,5 @@ public sealed record AgentInstructionBlock(
 
 public sealed record MemoryTypeCatalogResponse(
     int ModelVersion,
-    IReadOnlyList<MemoryTypeDefinition> Types);
+    IReadOnlyList<MemoryTypeDefinition> Types,
+    string CaptureOfferPolicy);

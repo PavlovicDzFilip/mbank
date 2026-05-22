@@ -54,6 +54,13 @@ public sealed class AgentInstructionServiceTests : IDisposable
             x.Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
             x.Contains("resolve_conflict", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("Re-call `get_task_context`", block.Content, StringComparison.Ordinal);
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("Re-call `get_task_context`", StringComparison.Ordinal));
+        Assert.Contains("Offering to capture memory", block.Content, StringComparison.Ordinal);
+        Assert.Contains("capture_offer", block.Content, StringComparison.Ordinal);
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("capture_offer", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
