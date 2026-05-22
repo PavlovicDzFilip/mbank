@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using MBank.Api.Domain;
 using MBank.Api.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,16 +64,19 @@ public sealed class MemoryWorkspaceTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Member_sees_empty_list_for_new_project()
+    public async Task Member_sees_starter_pack_in_list_for_new_project()
     {
-        var client = await CreateSignedInClientAsync("empty.memories@example.test");
-        var projectId = await CreateProjectAsync(client, "Empty Memories");
+        var client = await CreateSignedInClientAsync("starter.memories@example.test");
+        var projectId = await CreateProjectAsync(client, "Starter Pack Memories");
 
         var response = await client.GetAsync($"/projects/{projectId}/memories");
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("No memories in this project yet", body);
+        Assert.DoesNotContain("No memories in this project yet", body);
+        Assert.Contains("MBank task startup", body);
+        Assert.Contains("Sparring partner", body);
+        Assert.Contains($"{ProjectStarterPack.Memories.Count} stored", body);
         Assert.Contains("View memories", await GetProjectDetailBodyAsync(client, projectId));
     }
 
