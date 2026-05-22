@@ -619,6 +619,15 @@ button:hover {
   margin: 0;
 }
 
+.dialog-option {
+  display: grid;
+  gap: 6px;
+}
+
+.dialog-option .dialog-copy {
+  margin: 0;
+}
+
 .dialog-actions {
   display: flex;
   gap: 8px;

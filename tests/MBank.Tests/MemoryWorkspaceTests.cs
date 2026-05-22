@@ -67,7 +67,7 @@ public sealed class MemoryWorkspaceTests(MBankWebApplicationFactory factory)
     public async Task Member_sees_starter_pack_in_list_for_new_project()
     {
         var client = await CreateSignedInClientAsync("starter.memories@example.test");
-        var projectId = await CreateProjectAsync(client, "Starter Pack Memories");
+        var projectId = await CreateProjectAsync(client, "Starter Pack Memories", seedStarterPack: true);
 
         var response = await client.GetAsync($"/projects/{projectId}/memories");
         var body = await response.Content.ReadAsStringAsync();
@@ -194,12 +194,21 @@ public sealed class MemoryWorkspaceTests(MBankWebApplicationFactory factory)
         return await client.PostAsync($"{path}?handler={handler}", content);
     }
 
-    private static async Task<Guid> CreateProjectAsync(HttpClient client, string name)
+    private static async Task<Guid> CreateProjectAsync(
+        HttpClient client,
+        string name,
+        bool seedStarterPack = false)
     {
+        var fields = new Dictionary<string, string> { ["Name"] = name };
+        if (seedStarterPack)
+        {
+            fields["SeedStarterPack"] = "true";
+        }
+
         var create = await PostAntiforgeryFormAsync(
             client,
             "/projects",
-            new Dictionary<string, string> { ["Name"] = name },
+            fields,
             "Create");
         Assert.Equal(HttpStatusCode.Redirect, create.StatusCode);
         return ExtractProjectId(create.Headers.Location!.OriginalString);
