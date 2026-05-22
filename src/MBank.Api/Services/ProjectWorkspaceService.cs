@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MBank.Api.Services;
 
-public sealed class ProjectWorkspaceService(MemoryDbContext db)
+public sealed class ProjectWorkspaceService(MemoryDbContext db, MemoryService memories)
 {
     public async Task<IReadOnlyList<Project>> ListProjectsAsync(
         UserId userId,
@@ -28,6 +28,8 @@ public sealed class ProjectWorkspaceService(MemoryDbContext db)
         db.Projects.Add(project);
         db.ProjectMemberships.Add(ProjectMembership.Create(userId, project.Id));
         await db.SaveChangesAsync(cancellationToken);
+
+        await memories.SeedProjectStarterPackAsync(userId, project.Id, cancellationToken);
 
         return project;
     }
