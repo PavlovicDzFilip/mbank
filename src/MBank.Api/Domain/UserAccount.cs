@@ -13,29 +13,25 @@ public sealed class UserAccount
 
     public string Name { get; private set; } = null!;
 
-    public string? Email { get; private set; }
+    public string Email { get; private set; } = null!;
 
     public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.UtcNow;
 
     public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.UtcNow;
 
-    public static UserAccount Create(string name, string? email = null, UserId? id = null)
+    public static UserAccount Create(string name, string email, UserId? id = null)
     {
         return new UserAccount
         {
             Id = id ?? UserId.New(),
             Name = RequiredText(name, "User name", 256, nameof(name)),
-            Email = OptionalText(email, "User email", 320, nameof(email))
+            Email = NormalizeEmail(email)
         };
     }
 
-    public static string? NormalizeEmail(string? email)
+    public static string NormalizeEmail(string email)
     {
-        var normalized = OptionalText(email, "User email", 320, nameof(email));
-        if (normalized is null)
-        {
-            return null;
-        }
+        var normalized = RequiredText(email, "User email", 320, nameof(email));
 
         try
         {
