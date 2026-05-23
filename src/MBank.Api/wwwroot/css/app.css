@@ -461,6 +461,49 @@ button:hover {
   word-break: break-all;
 }
 
+.onboarding-guide {
+  border-bottom: 1px solid rgba(86, 216, 182, 0.18);
+  border-top: 1px solid rgba(86, 216, 182, 0.18);
+  padding: 14px 0;
+}
+
+.setup-copy {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+
+.setup-copy code,
+.setup-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.setup-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.setup-grid h3 {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  margin: 0 0 6px;
+}
+
+.setup-code {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.45;
+  margin: 0;
+  overflow-x: auto;
+  padding: 10px;
+  white-space: pre;
+}
+
 .disclosure {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   margin-top: 16px;
@@ -656,6 +699,10 @@ button:hover {
 
   .inline-field-row {
     flex-direction: column;
+  }
+
+  .setup-grid {
+    grid-template-columns: 1fr;
   }
 }
 

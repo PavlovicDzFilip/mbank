@@ -50,6 +50,45 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task Bootstrap_agent_script_is_public_and_updates_supported_instruction_files()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/bootstrap-agent.sh");
+        var script = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("DEFAULT_CLIENT=\"all\"", script);
+        Assert.Contains("https://mbank.engineeringwithfilip.com", script);
+        Assert.Contains("AGENTS.md", script);
+        Assert.Contains("CLAUDE.md", script);
+        Assert.Contains(".cursor/rules/mbank.mdc", script);
+        Assert.Contains("mbank:start", script);
+        Assert.Contains("mbank:end", script);
+        Assert.Contains("/onboarding/agent-instructions", script);
+        Assert.Contains("printed_mbank", script);
+    }
+
+    [Fact]
+    public async Task Bootstrap_agent_windows_script_is_public_and_updates_supported_instruction_files()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/bootstrap-agent.ps1");
+        var script = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("[string] $Client = \"all\"", script);
+        Assert.Contains("https://mbank.engineeringwithfilip.com", script);
+        Assert.Contains("AGENTS.md", script);
+        Assert.Contains("CLAUDE.md", script);
+        Assert.Contains(".cursor/rules/mbank.mdc", script);
+        Assert.Contains("mbank:start", script);
+        Assert.Contains("mbank:end", script);
+        Assert.Contains("/onboarding/agent-instructions", script);
+    }
+
+    [Fact]
     public async Task StartTask_returns_canonical_rules_and_latest_working_style_guidance()
     {
         using var scope = factory.Services.CreateScope();

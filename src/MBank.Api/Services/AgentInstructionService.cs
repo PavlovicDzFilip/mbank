@@ -7,7 +7,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
     public const string LatestInstructionVersion = "1.0.9";
-    public const string BootstrapScriptUrl = "https://mbank.dev/bootstrap-agent.sh";
+    public const string BootstrapScriptUrl = "https://mbank.engineeringwithfilip.com/bootstrap-agent.sh";
 
     private static readonly string ValidMemoryTypeValues = string.Join(
         ", ",

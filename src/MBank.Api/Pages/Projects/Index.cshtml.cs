@@ -48,6 +48,7 @@ public sealed class IndexModel(ProjectWorkspaceService workspace) : Authenticate
         try
         {
             var project = await workspace.CreateProjectAsync(userId, Name, SeedStarterPack, cancellationToken);
+            TempData["OnboardingGuide"] = "project";
             return RedirectToPage("/Projects/Detail", new { id = project.Id.Value });
         }
         catch (ArgumentException)

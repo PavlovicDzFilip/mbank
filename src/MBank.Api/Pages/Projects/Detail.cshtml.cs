@@ -27,6 +27,8 @@ public sealed class DetailModel(
 
     public string? IssuedToken { get; private set; }
 
+    public string? OnboardingGuide { get; private set; }
+
     public bool OpenCreateTokenDialog { get; private set; }
 
     public bool OpenSettings { get; private set; }
@@ -53,6 +55,7 @@ public sealed class DetailModel(
         Tokens = await workspace.ListTokensAsync(userId, projectId, cancellationToken);
         MemoryCount = await memories.GetMemoryCountAsync(userId, projectId, cancellationToken);
         IssuedToken = TempData["IssuedToken"] as string;
+        OnboardingGuide = TempData["OnboardingGuide"] as string;
         return Page();
     }
 
@@ -137,6 +140,7 @@ public sealed class DetailModel(
             }
 
             TempData["IssuedToken"] = issued.Secret.Value;
+            TempData["OnboardingGuide"] = "token";
             return RedirectToPage(new { id = Id });
         }
         catch (ProjectWorkspaceException ex)
