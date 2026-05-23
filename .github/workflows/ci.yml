@@ -31,3 +31,25 @@ jobs:
 
       - name: Test
         run: dotnet test tests/MBank.Tests/MBank.Tests.csproj -c Release --no-restore -p:UseAppHost=false
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build api image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/MBank.Api/Dockerfile
+          target: api
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build migrate image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/MBank.Api/Dockerfile
+          target: migrate
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
