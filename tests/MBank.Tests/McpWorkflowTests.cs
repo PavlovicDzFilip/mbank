@@ -66,8 +66,8 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
 
         var rememberToolDefinition = ResolveTool(tools, rememberTool);
         Assert.Contains(
-            rememberToolDefinition["description"]!.GetValue<string>(),
             "Roslyn analyzer",
+            rememberToolDefinition["description"]!.GetValue<string>(),
             StringComparison.OrdinalIgnoreCase);
         var rememberInputSchema = rememberToolDefinition["inputSchema"]!.AsObject();
         var memoryTypeSchema = rememberInputSchema["properties"]!["request"]!["properties"]!["memories"]!["items"]!["properties"]!["type"]!.AsObject();

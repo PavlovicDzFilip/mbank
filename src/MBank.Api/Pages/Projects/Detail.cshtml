@@ -51,6 +51,47 @@
                 </div>
             }
 
+            @if (!string.IsNullOrWhiteSpace(Model.OnboardingGuide) || !string.IsNullOrWhiteSpace(Model.IssuedToken))
+            {
+                <section class="workspace-section onboarding-guide" aria-labelledby="agent-setup-title">
+                    <div class="section-toolbar">
+                        <div>
+                            <h2 id="agent-setup-title" class="section-title">Agent setup</h2>
+                            <p class="section-copy">Connect this project to Codex, Claude, Cursor, or another MCP client.</p>
+                        </div>
+                        @if (string.IsNullOrWhiteSpace(Model.IssuedToken))
+                        {
+                            <button type="button" class="btn btn-primary btn-sm" data-dialog-open="create-token-dialog">New token</button>
+                        }
+                    </div>
+
+                    @if (string.IsNullOrWhiteSpace(Model.IssuedToken))
+                    {
+                        <p class="setup-copy">Create a project token first. MBank uses that token to scope agent memory to this project.</p>
+                    }
+                    else
+                    {
+                        <p class="setup-copy">Use the token above as <code>MBANK_PROJECT_TOKEN</code>, then add this MCP server to your client:</p>
+                        <pre class="setup-code"><code>[mcp_servers.mbank]
+enabled = true
+url = "https://mbank.engineeringwithfilip.com/mcp"
+bearer_token_env_var = "MBANK_PROJECT_TOKEN"</code></pre>
+                    }
+
+                    <div class="setup-grid">
+                        <div>
+                            <h3>macOS or Linux</h3>
+                            <pre class="setup-code"><code>curl -fsSL https://mbank.engineeringwithfilip.com/bootstrap-agent.sh | sh</code></pre>
+                        </div>
+                        <div>
+                            <h3>Windows PowerShell</h3>
+                            <pre class="setup-code"><code>Invoke-WebRequest https://mbank.engineeringwithfilip.com/bootstrap-agent.ps1 -OutFile bootstrap-agent.ps1
+.\bootstrap-agent.ps1</code></pre>
+                        </div>
+                    </div>
+                </section>
+            }
+
             <section class="workspace-section">
                 <div class="section-toolbar">
                     <div>

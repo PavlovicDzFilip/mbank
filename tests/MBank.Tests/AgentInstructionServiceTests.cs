@@ -102,6 +102,29 @@ public sealed class AgentInstructionServiceTests : IDisposable
         Assert.Equal(before, File.ReadAllText(agentsPath));
     }
 
+    [Fact]
+    public void Bootstrap_scripts_default_to_all_targets_and_public_server()
+    {
+        var repoRoot = FindRepositoryRoot();
+        var shell = File.ReadAllText(Path.Combine(repoRoot, "scripts", "bootstrap-agent.sh"));
+        var powershell = File.ReadAllText(Path.Combine(repoRoot, "scripts", "bootstrap-agent.ps1"));
+
+        Assert.Contains("DEFAULT_CLIENT=\"all\"", shell);
+        Assert.Contains("DEFAULT_SERVER_URL=\"https://mbank.engineeringwithfilip.com\"", shell);
+        Assert.DoesNotContain("\r\n", shell);
+        Assert.Contains("AGENTS.md", shell);
+        Assert.Contains("CLAUDE.md", shell);
+        Assert.Contains(".cursor/rules/mbank.mdc", shell);
+        Assert.Contains("printed_mbank", shell);
+
+        Assert.Contains("[string] $Client = \"all\"", powershell);
+        Assert.Contains("[string] $ServerUrl = \"https://mbank.engineeringwithfilip.com\"", powershell);
+        Assert.Contains("AGENTS.md", powershell);
+        Assert.Contains("CLAUDE.md", powershell);
+        Assert.Contains(".cursor/rules/mbank.mdc", powershell);
+        Assert.Contains("$replaced = $false", powershell);
+    }
+
     private AgentInstructionService CreateService()
     {
         var configuration = new ConfigurationBuilder()
@@ -112,6 +135,22 @@ public sealed class AgentInstructionServiceTests : IDisposable
             .Build();
 
         return new AgentInstructionService(new TestHostEnvironment(_root), configuration);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "MBank.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Could not find repository root.");
     }
 
     private sealed class TestHostEnvironment(string contentRootPath) : IHostEnvironment

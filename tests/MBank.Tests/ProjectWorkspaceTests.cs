@@ -177,6 +177,10 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
         var issuedBody = await issued.Content.ReadAsStringAsync();
         Assert.Contains("mbp_", issuedBody);
         Assert.Contains("Copy this token now.", issuedBody);
+        Assert.Contains("Agent setup", issuedBody);
+        Assert.Contains("MBANK_PROJECT_TOKEN", issuedBody);
+        Assert.Contains("bootstrap-agent.ps1", issuedBody);
+        Assert.Contains("bootstrap-agent.sh", issuedBody);
 
         var afterIssue = await client.GetAsync($"/projects/{projectId}");
         var afterIssueBody = await afterIssue.Content.ReadAsStringAsync();
@@ -227,6 +231,27 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains("/login", response.Headers.Location?.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task New_project_redirect_shows_onboarding_guide()
+    {
+        var client = await CreateSignedInClientAsync("project.onboarding@example.test");
+
+        var create = await PostAntiforgeryFormAsync(
+            client,
+            "/projects",
+            new Dictionary<string, string> { ["Name"] = "Onboarded Project" },
+            "Create");
+        Assert.Equal(HttpStatusCode.Redirect, create.StatusCode);
+
+        var detail = await client.GetAsync(create.Headers.Location!);
+        var detailBody = await detail.Content.ReadAsStringAsync();
+
+        Assert.Contains("Agent setup", detailBody);
+        Assert.Contains("Create a project token first", detailBody);
+        Assert.Contains("bootstrap-agent.ps1", detailBody);
+        Assert.Contains("bootstrap-agent.sh", detailBody);
     }
 
     private async Task<HttpClient> CreateSignedInClientAsync(string email)

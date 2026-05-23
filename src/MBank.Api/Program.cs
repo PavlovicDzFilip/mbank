@@ -101,6 +101,14 @@ app.MapGet("/onboarding/agent-instructions", (AgentInstructionService agentInstr
     var block = agentInstructions.GetInstructionBlock();
     return Results.Text(block.Content, "text/markdown");
 });
+app.MapGet("/bootstrap-agent.sh", (IWebHostEnvironment environment) =>
+{
+    return ServeScript(environment, "bootstrap-agent.sh", "text/x-shellscript");
+});
+app.MapGet("/bootstrap-agent.ps1", (IWebHostEnvironment environment) =>
+{
+    return ServeScript(environment, "bootstrap-agent.ps1", "text/plain");
+});
 
 app.MapRazorPages();
 
@@ -111,5 +119,19 @@ app.UseWhen(
 app.MapMcp("/mcp");
 
 app.Run();
+
+static IResult ServeScript(IWebHostEnvironment environment, string fileName, string contentType)
+{
+    var candidates = new[]
+    {
+        Path.Combine(environment.WebRootPath ?? "", fileName),
+        Path.GetFullPath(Path.Combine(environment.ContentRootPath, "..", "..", "scripts", fileName))
+    };
+    var scriptPath = candidates.FirstOrDefault(File.Exists);
+
+    return scriptPath is null
+        ? Results.NotFound($"{fileName} was not found.")
+        : Results.File(scriptPath, contentType);
+}
 
 public partial class Program;

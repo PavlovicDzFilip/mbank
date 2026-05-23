@@ -127,18 +127,37 @@ The bootstrap scripts only add or update content between `<!-- mbank:start ... -
 
 When the MBank instruction text changes, bump the canonical block version in the server so agents can detect stale repo instructions. When MCP tools change, update the canonical agent instructions in the same slice.
 
-Placeholder public URL:
+Public URL:
 
 ```bash
-curl -fsSL https://mbank.dev/bootstrap-agent.sh | sh
+curl -fsSL https://mbank.engineeringwithfilip.com/bootstrap-agent.sh | sh
 ```
+
+Windows PowerShell:
+
+```powershell
+Invoke-WebRequest https://mbank.engineeringwithfilip.com/bootstrap-agent.ps1 -OutFile bootstrap-agent.ps1
+.\bootstrap-agent.ps1
+```
+
+By default, the public script updates all supported instruction targets:
+
+- `AGENTS.md`
+- `CLAUDE.md`
+- `.cursor/rules/mbank.mdc`
 
 Inspect-first usage:
 
 ```bash
-curl -fsSL https://mbank.dev/bootstrap-agent.sh -o bootstrap-agent.sh
+curl -fsSL https://mbank.engineeringwithfilip.com/bootstrap-agent.sh -o bootstrap-agent.sh
 less bootstrap-agent.sh
 sh bootstrap-agent.sh
+```
+
+```powershell
+Invoke-WebRequest https://mbank.engineeringwithfilip.com/bootstrap-agent.ps1 -OutFile bootstrap-agent.ps1
+Get-Content .\bootstrap-agent.ps1
+.\bootstrap-agent.ps1
 ```
 
 Local development usage (use the `api` HTTP URL from the Aspire dashboard as `-ServerUrl` / `--server-url`):

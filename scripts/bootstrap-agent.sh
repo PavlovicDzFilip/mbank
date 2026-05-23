@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 
-DEFAULT_CLIENT="codex"
-DEFAULT_SERVER_URL="http://localhost:5221"
+DEFAULT_CLIENT="all"
+DEFAULT_SERVER_URL="https://mbank.engineeringwithfilip.com"
 CLIENT="$DEFAULT_CLIENT"
 SERVER_URL="$DEFAULT_SERVER_URL"
 YES="0"
@@ -12,7 +12,8 @@ usage() {
 Usage: bootstrap-agent.sh [--client codex|claude|cursor|all] [--server-url URL] [--yes]
 
 Fetches the canonical MBank instruction block from a running MBank server and
-adds or updates it in repo agent instruction files. The script only changes
+adds or updates it in repo agent instruction files. By default, it updates
+AGENTS.md, CLAUDE.md, and .cursor/rules/mbank.mdc. The script only changes
 content between the mbank:start and mbank:end markers.
 USAGE
 }
@@ -120,7 +121,10 @@ replace_block() {
                 close(block_file)
             }
             /<!--[[:space:]]*mbank:start/ {
-                print_block()
+                if (!printed_mbank) {
+                    print_block()
+                    printed_mbank = 1
+                }
                 in_mbank = 1
                 next
             }

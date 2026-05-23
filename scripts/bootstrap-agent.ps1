@@ -1,8 +1,8 @@
 param(
     [ValidateSet("codex", "claude", "cursor", "all")]
-    [string] $Client = "codex",
+    [string] $Client = "all",
 
-    [string] $ServerUrl = "http://localhost:5221",
+    [string] $ServerUrl = "https://mbank.engineeringwithfilip.com",
 
     [switch] $Yes
 )
@@ -61,7 +61,15 @@ function Set-MBankBlock {
     $content = Get-Content -LiteralPath $Path -Raw
     $pattern = '(?s)<!--\s*mbank:start\b.*?<!--\s*mbank:end\s*-->'
     if ($content -match $pattern) {
-        $updated = [regex]::Replace($content, $pattern, [System.Text.RegularExpressions.MatchEvaluator] { $Block }, 1)
+        $replaced = $false
+        $updated = [regex]::Replace($content, $pattern, [System.Text.RegularExpressions.MatchEvaluator] {
+            if ($replaced) {
+                return ""
+            }
+
+            $replaced = $true
+            return $Block
+        })
         Set-Content -LiteralPath $Path -Value $updated -NoNewline
         return
     }
