@@ -34,7 +34,7 @@ public sealed class MagicLinkLogin
         var now = DateTimeOffset.UtcNow;
         var login = new MagicLinkLogin
         {
-            Email = UserAccount.NormalizeEmail(email) ?? throw new ArgumentException("Email is required.", nameof(email)),
+            Email = UserAccount.NormalizeEmail(email),
             TokenHash = secret.Hash,
             CreatedAt = now,
             ExpiresAt = now.Add(Lifetime)

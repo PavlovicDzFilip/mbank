@@ -36,6 +36,7 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
             entity.Property(x => x.Name)
                 .HasMaxLength(256);
             entity.Property(x => x.Email)
+                .IsRequired()
                 .HasMaxLength(320);
             entity.HasIndex(x => x.Email).IsUnique();
         });
