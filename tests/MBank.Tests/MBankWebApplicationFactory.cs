@@ -74,13 +74,15 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
             {
                 var currentScope = new MemoryScopeProvider();
                 currentScope.Set(new AuthenticatedMemoryScope(
-                    TestDatabase.UserId,
+                    RequireDatabase().UserId,
                     TestDatabase.ProjectId,
                     AccessTokenPermissions.Crud));
                 return currentScope;
             });
         });
     }
+
+    public UserId DefaultUserId => RequireDatabase().UserId;
 
     private TestDatabase RequireDatabase()
     {

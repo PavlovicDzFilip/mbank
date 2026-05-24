@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.ComponentModel.DataAnnotations.Schema;
+using MBank.Api.Services;
 using NpgsqlTypes;
 using Pgvector;
 
@@ -45,31 +46,67 @@ public sealed class MemoryEntry
 
     public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.UtcNow;
 
-    public static MemoryEntry Create(
+    public static async Task<MemoryEntry> CreateAsync(
         UserId userId,
         ProjectId projectId,
         MemoryType type,
         string summary,
         string? subject,
-        IReadOnlyList<string> tags,
+        IReadOnlyList<string>? tags,
         double confidence,
-        string searchText,
-        Vector embedding,
-        SourceRecordId? sourceRecordId)
+        string? sourceText,
+        SourceRecordId? sourceRecordId,
+        IEmbeddingService embeddings,
+        CancellationToken cancellationToken)
     {
+        type = type ?? throw new ArgumentNullException(nameof(type));
+        embeddings = embeddings ?? throw new ArgumentNullException(nameof(embeddings));
+        var normalizedSummary = RequiredText(summary, "Memory summary", 2000, nameof(summary));
+        var normalizedSubject = OptionalText(subject, "Memory subject", 256, nameof(subject));
+        var normalizedTags = NormalizeTags(tags);
+        var searchText = BuildSearchText(type, normalizedSummary, normalizedSubject, normalizedTags, sourceText);
+        var embedding = await embeddings.GenerateEmbeddingAsync(searchText, cancellationToken)
+            ?? throw new InvalidOperationException("Memory embedding factory returned null.");
+
         return new MemoryEntry
         {
             UserId = userId,
             ProjectId = projectId,
-            Type = type ?? throw new ArgumentNullException(nameof(type)),
-            Summary = RequiredText(summary, "Memory summary", 2000, nameof(summary)),
-            Subject = OptionalText(subject, "Memory subject", 256, nameof(subject)),
-            Tags = NormalizeTags(tags),
+            Type = type,
+            Summary = normalizedSummary,
+            Subject = normalizedSubject,
+            Tags = normalizedTags,
             Confidence = Math.Clamp(confidence, 0, 1),
-            SearchText = RequiredText(searchText, "Memory search text", 5000, nameof(searchText)),
+            SearchText = searchText,
             Embedding = embedding,
             SourceRecordId = sourceRecordId
         };
+    }
+
+    private static string BuildSearchText(
+        MemoryType type,
+        string summary,
+        string? subject,
+        IReadOnlyList<string>? tags,
+        string? sourceText)
+    {
+        type = type ?? throw new ArgumentNullException(nameof(type));
+        var normalizedSummary = RequiredText(summary, "Memory summary", 2000, nameof(summary));
+        var normalizedSubject = OptionalText(subject, "Memory subject", 256, nameof(subject));
+        var normalizedTags = NormalizeTags(tags);
+        var sourceExcerpt = string.IsNullOrWhiteSpace(sourceText)
+            ? ""
+            : sourceText.Length <= 1200 ? sourceText : sourceText[..1200];
+
+        var searchText = string.Join(
+            "\n",
+            $"Type: {type.Value}",
+            $"Subject: {normalizedSubject}",
+            $"Summary: {normalizedSummary}",
+            $"Tags: {string.Join(", ", normalizedTags)}",
+            $"Source excerpt: {sourceExcerpt}");
+
+        return RequiredText(searchText, "Memory search text", 5000, nameof(summary));
     }
 
     public void Supersede()
@@ -94,14 +131,14 @@ public sealed class MemoryEntry
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
-    private static string[] NormalizeTags(IReadOnlyList<string> tags)
+    private static string[] NormalizeTags(IReadOnlyList<string>? tags)
     {
-        return tags
+        return tags?
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(20)
-            .ToArray();
+            .ToArray() ?? [];
     }
 
     private static string RequiredText(string value, string displayName, int maxLength, string parameterName)

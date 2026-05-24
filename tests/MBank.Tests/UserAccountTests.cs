@@ -20,4 +20,12 @@ public sealed class UserAccountTests
 
         Assert.Equal("user.name@example.test", user.Email);
     }
+
+    [Fact]
+    public void Create_generates_user_id()
+    {
+        var user = UserAccount.Create("Test User", "test@example.test");
+
+        Assert.NotEqual(Guid.Empty, user.Id.Value);
+    }
 }
