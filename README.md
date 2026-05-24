@@ -13,7 +13,7 @@ MCP-first memory storage and retrieval for AI agents.
 
 ## Prerequisites
 
-- .NET SDK 10.0.107 or compatible.
+- .NET SDK **10.0.103** exactly (`global.json` pins this version for local dev, CI, and Docker). Install with `dotnet-install.sh --version 10.0.103`, or use a Fedora/RHEL package that ships SDK 10.0.103.
 - Docker Desktop running with the Linux engine enabled.
 - AppHost user secrets configured for `Parameters:openaiApiKey`.
 
@@ -39,7 +39,9 @@ Production deployment does not use the local AppHost. Merging to `master` runs G
 
 ## Production deploy (GitHub Actions)
 
-Every pull request and merge-queue run executes **CI** (restore, `dotnet format`, Release build with analyzers, tests). Pushing to `master` after a merge runs **Deploy production**: the same checks, then Docker images tagged with UTC `yyyyMMddHHmmss`, registry push, SSH deploy in `/vault`, migrate, recreate `mbank-api`, and a smoke `curl` against `/onboarding/agent-instructions`.
+Every pull request and merge-queue run executes **CI** (restore, `dotnet format`, Release build with analyzers, tests, and a Docker build of both `api` and `migrate` images). Pushing to `master` after a merge runs **Deploy production**: the same checks, then Docker images tagged with UTC `yyyyMMddHHmmss`, registry push, SSH deploy in `/vault`, migrate, recreate `mbank-api`, and a smoke `curl` against `/onboarding/agent-instructions`.
+
+Require the **CI** check on `master` branch protection (or merge queue) so pull requests cannot merge when the Docker build fails.
 
 ### One-time GitHub setup
 
