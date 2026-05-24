@@ -149,7 +149,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         db.Projects.Add(otherProject);
         await db.SaveChangesAsync();
         currentScope.Set(new AuthenticatedMemoryScope(
-            TestDatabase.UserId,
+            factory.DefaultUserId,
             otherProject.Id,
             AccessTokenPermissions.Crud));
 

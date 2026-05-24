@@ -19,11 +19,10 @@ public sealed class UserAccount
 
     public DateTimeOffset UpdatedAt { get; private set; } = DateTimeOffset.UtcNow;
 
-    public static UserAccount Create(string name, string email, UserId? id = null)
+    public static UserAccount Create(string name, string email)
     {
         return new UserAccount
         {
-            Id = id ?? UserId.New(),
             Name = RequiredText(name, "User name", 256, nameof(name)),
             Email = NormalizeEmail(email)
         };

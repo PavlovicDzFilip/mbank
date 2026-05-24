@@ -39,21 +39,19 @@ public sealed class MemoryService(
         foreach (var draft in ProjectStarterPack.Memories)
         {
             ValidateDraft(draft);
-            var tags = NormalizeTags(draft.Tags);
-            var searchText = BuildMemorySearchText(draft.Type, draft.Summary, draft.Subject, tags, source.SourceText);
-            var vector = new Vector(await embeddings.GenerateEmbeddingAsync(searchText, cancellationToken));
-
-            db.Memories.Add(MemoryEntry.Create(
+            var entry = await MemoryEntry.CreateAsync(
                 userId,
                 projectId,
                 draft.Type,
                 draft.Summary,
                 draft.Subject,
-                tags,
+                draft.Tags,
                 draft.Confidence ?? 0.95,
-                searchText,
-                vector,
-                source.Id));
+                source.SourceText,
+                source.Id,
+                embeddings,
+                cancellationToken);
+            db.Memories.Add(entry);
 
             seeded++;
         }
@@ -90,23 +88,20 @@ public sealed class MemoryService(
         foreach (var draft in request.Memories)
         {
             ValidateDraft(draft);
-            var tags = NormalizeTags(draft.Tags);
-            var searchText = BuildMemorySearchText(draft.Type, draft.Summary, draft.Subject, tags, request.Source?.SourceText);
-            var vector = new Vector(await embeddings.GenerateEmbeddingAsync(searchText, cancellationToken));
-
-            var entry = MemoryEntry.Create(
+            var entry = await MemoryEntry.CreateAsync(
                 scope.UserId,
                 scope.ProjectId,
                 draft.Type,
                 draft.Summary,
                 draft.Subject,
-                tags,
+                draft.Tags,
                 draft.Confidence ?? 0.7,
-                searchText,
-                vector,
-                source?.Id);
+                request.Source?.SourceText,
+                source?.Id,
+                embeddings,
+                cancellationToken);
 
-            var related = await FindSimilarMemoriesAsync(scope.ProjectId, vector, entry.Subject, 4, cancellationToken);
+            var related = await FindSimilarMemoriesAsync(scope.ProjectId, entry.Embedding!, entry.Subject, 4, cancellationToken);
 
             db.Memories.Add(entry);
             stored.Add(ToStoredMemory(entry));
@@ -162,7 +157,7 @@ public sealed class MemoryService(
         ValidateTaskRequest(request);
 
         var queryText = BuildTaskQueryText(request);
-        var queryVector = new Vector(await embeddings.GenerateEmbeddingAsync(queryText, cancellationToken));
+        var queryVector = await embeddings.GenerateEmbeddingAsync(queryText, cancellationToken);
         var limit = Math.Clamp(request.Limit, 1, 20);
 
         var candidateLimit = Math.Max(limit * 4, 20);
@@ -754,26 +749,6 @@ public sealed class MemoryService(
         return builder.ToString();
     }
 
-    private static string BuildMemorySearchText(
-        MemoryType type,
-        string summary,
-        string? subject,
-        IReadOnlyList<string> tags,
-        string? sourceText)
-    {
-        var sourceExcerpt = string.IsNullOrWhiteSpace(sourceText)
-            ? ""
-            : sourceText.Length <= 1200 ? sourceText : sourceText[..1200];
-
-        return string.Join(
-            "\n",
-            $"Type: {type.Value}",
-            $"Subject: {subject}",
-            $"Summary: {summary}",
-            $"Tags: {string.Join(", ", tags)}",
-            $"Source excerpt: {sourceExcerpt}");
-    }
-
     private static HashSet<string> ExtractTerms(string text)
     {
         return text
@@ -815,16 +790,6 @@ public sealed class MemoryService(
             entry.Subject,
             entry.Tags,
             entry.Confidence);
-    }
-
-    private static string[] NormalizeTags(IReadOnlyList<string>? tags)
-    {
-        return tags?
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(20)
-            .ToArray() ?? [];
     }
 
     private static string? NormalizeOptional(string? value)

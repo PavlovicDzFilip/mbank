@@ -7,7 +7,6 @@ namespace MBank.Tests;
 
 internal sealed class TestDatabase : IAsyncDisposable
 {
-    public static readonly UserId UserId = new(Guid.Parse("11111111-1111-7111-8111-111111111111"));
     public static readonly ProjectId ProjectId = new(Guid.Parse("22222222-2222-7222-8222-222222222222"));
     public const string ProjectToken = "mbp_test_project_token";
 
@@ -20,6 +19,8 @@ internal sealed class TestDatabase : IAsyncDisposable
     }
 
     public string ConnectionString { get; }
+
+    public UserId UserId { get; private set; } = MBank.Api.Domain.UserId.New();
 
     public static async Task<TestDatabase> CreateAsync()
     {
@@ -57,7 +58,9 @@ internal sealed class TestDatabase : IAsyncDisposable
         await context.Database.ExecuteSqlRawAsync("DELETE FROM project_memberships");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM projects");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM users");
-        context.Users.Add(UserAccount.Create("Test User", "test@example.test", UserId));
+        var user = UserAccount.Create("Test User", "test@example.test");
+        UserId = user.Id;
+        context.Users.Add(user);
         context.Projects.Add(Project.Create("Test Project", ProjectId));
         context.ProjectMemberships.Add(ProjectMembership.Create(UserId, ProjectId));
         var issuedToken = AccessToken.Create(
