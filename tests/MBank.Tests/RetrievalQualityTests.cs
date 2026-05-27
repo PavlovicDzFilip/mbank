@@ -501,7 +501,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
                 0.98),
             new(
                 MemoryType.TechnicalConvention,
-                "When Codex runs MBank.Api, it must use D:\\MBank\\src\\MBank.Api as the working directory so appsettings and .NET user-secrets are applied correctly.",
+                "When Codex runs MBank.Api, it must use the local project checkout's src\\MBank.Api directory as the working directory so appsettings and .NET user-secrets are applied correctly.",
                 "MBank.Api launch",
                 ["dotnet", "user-secrets", "launch"],
                 1),

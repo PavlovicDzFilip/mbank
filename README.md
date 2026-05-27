@@ -15,16 +15,17 @@ MCP-first memory storage and retrieval for AI agents.
 
 - .NET SDK **10.0.103** exactly (`global.json` pins this version for local dev, CI, and Docker). Install with `dotnet-install.sh --version 10.0.103`, or use a Fedora/RHEL package that ships SDK 10.0.103.
 - Docker Desktop running with the Linux engine enabled.
-- AppHost user secrets configured for `Parameters:openaiApiKey`.
+- Local secrets configured with .NET user secrets for the project you run.
 
 ## Run Locally With Aspire
 
-Aspire is the local runtime for MBank. Each worktree should run its own AppHost so Postgres, migrations, the API, Mailpit, and ports stay isolated.
+Aspire is the local runtime for this project checkout. It runs the AppHost, Postgres, migrations, the API, Mailpit, and ports from the local project path.
 
-Configure AppHost secrets once per worktree:
+Configure the AppHost secrets once for the local project checkout:
 
 ```powershell
 dotnet user-secrets --project src\MBank.AppHost\MBank.AppHost.csproj set "Parameters:openaiApiKey" "<openai-api-key>"
+dotnet user-secrets --project src\MBank.AppHost\MBank.AppHost.csproj set "Parameters:postgresPassword" "<postgres-password>"
 ```
 
 Start the local runtime:
@@ -36,6 +37,20 @@ dotnet run --project src\MBank.AppHost\MBank.AppHost.csproj
 The AppHost starts the Aspire dashboard, applies EF Core migrations through the `migrate` resource, then starts the `api` resource. Development magic-link email goes to the `mailpit` resource.
 
 Production deployment does not use the local AppHost. Merging to `master` runs GitHub Actions (test, lint, build, deploy to Hetzner). Use `scripts\Deploy-MBankHetzner.ps1` only as an emergency fallback if Actions is unavailable.
+
+### Direct API Runs
+
+Aspire normally supplies API configuration. If you run `MBank.Api` directly from the local project checkout, configure the API project secrets:
+
+```powershell
+dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "OpenAI:ApiKey" "<openai-api-key>"
+dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "ConnectionStrings:MemoryDb" "Host=localhost;Port=5432;Database=mbank;Username=mbank;Password=<postgres-password>"
+dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "Smtp:Host" "<smtp-host>"
+dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "Smtp:Port" "<smtp-port>"
+dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "Smtp:FromAddress" "<from-address>"
+```
+
+Use a Postgres password and SMTP settings that match your local runtime.
 
 ## Production deploy (GitHub Actions)
 
