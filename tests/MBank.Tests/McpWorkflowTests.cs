@@ -69,6 +69,10 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             "Roslyn analyzer",
             rememberToolDefinition["description"]!.GetValue<string>(),
             StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            "why one approach was chosen instead of another",
+            rememberToolDefinition["description"]!.GetValue<string>(),
+            StringComparison.OrdinalIgnoreCase);
         var rememberInputSchema = rememberToolDefinition["inputSchema"]!.AsObject();
         var memoryTypeSchema = rememberInputSchema["properties"]!["request"]!["properties"]!["memories"]!["items"]!["properties"]!["type"]!.AsObject();
         Assert.Equal("string", memoryTypeSchema["type"]!.GetValue<string>());
@@ -84,6 +88,12 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         Assert.Contains(startTaskContent["rules"]!.AsArray(), x =>
             x!["source"]!.GetValue<string>() == "canonical_instruction"
             && x["text"]!.GetValue<string>().Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(startTaskContent["rules"]!.AsArray(), x =>
+            x!["source"]!.GetValue<string>() == "canonical_instruction"
+            && x["text"]!.GetValue<string>().Contains("uncertain how to proceed", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(startTaskContent["rules"]!.AsArray(), x =>
+            x!["source"]!.GetValue<string>() == "canonical_instruction"
+            && x["text"]!.GetValue<string>().Contains("why one approach was chosen instead of another", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("this task", startTaskContent["summary"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(AgentInstructionService.LatestInstructionVersion, startTaskContent["onboarding"]!["latestVersion"]!.GetValue<string>());
 

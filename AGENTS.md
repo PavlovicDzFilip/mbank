@@ -33,7 +33,7 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Do not recreate `CURRENT_WORK.md` or `PRODUCT_BOARD.md` unless the user explicitly asks for those files.
 - When durable continuity changes, store it through the configured `mbank` MCP server instead of writing planning notes to local continuity files.
 
-<!-- mbank:start version="1.0.9" -->
+<!-- mbank:start version="1.0.10" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
@@ -45,11 +45,13 @@ At the start of a new product, planning, implementation, debugging, or review ta
 3. If MBank reports that agent instruction files are missing or outdated, ask the user before updating files or running the bootstrap script.
 4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
 
-Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; or when the user references prior decisions or constraints you have not yet retrieved for this focus. Skip re-calls for trivial same-focus follow-ups.
+Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; when the user references prior decisions or constraints you have not yet retrieved for this focus; when you are uncertain how to proceed; before choosing between materially different technical approaches; or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip re-calls for trivial same-focus follow-ups.
 
 Before proposing a plan, making changes, or answering substantive project-specific questions (including exploration), use memories from the latest `get_task_context` result for the current focus.
 
 Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
+
+When the user asks why the agent chose one approach instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed. Pause and identify the possible correction before continuing. If the exchange reveals durable guidance, offer to store it in MBank, or call `remember` when the user explicitly asks to store it. Do not store the agent's guess as fact before the user confirms the underlying guidance.
 
 ## Offering to capture memory
 

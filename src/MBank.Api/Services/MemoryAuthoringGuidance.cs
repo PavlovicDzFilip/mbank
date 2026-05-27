@@ -7,7 +7,7 @@ public static class MemoryAuthoringGuidance
         """;
 
     public const string RememberToolDescription = """
-        Store durable product or implementation guidance that is likely to matter in future sessions. Each memory type must be one of the valid MemoryType values returned by describe_memory_types. Do not call without user approval unless the user explicitly asks to store something. After exploration, offer capture first; on approval, store atomic memories using captureHint guidance from describe_memory_types. Do not store ordinary conversation, temporary reasoning, agent brainstorm output, or information only relevant to the current response. Send short atomic memories; include source text when available.
+        Store durable product or implementation guidance that is likely to matter in future sessions. Each memory type must be one of the valid MemoryType values returned by describe_memory_types. Do not call without user approval unless the user explicitly asks to store something. After exploration, offer capture first; on approval, store atomic memories using captureHint guidance from describe_memory_types. When the user asks why one approach was chosen instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed; offer to store durable guidance if the exchange reveals it, but do not store the agent's guess as fact before the user confirms the underlying guidance. Do not store ordinary conversation, temporary reasoning, agent brainstorm output, or information only relevant to the current response. Send short atomic memories; include source text when available.
         """ + " " + MechanicalEnforcementParagraph;
 
     public const string CanonicalMechanicalEnforcementSection = """
