@@ -9,17 +9,6 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - After the product direction is clear, propose a technical solution.
 - Implement only after the user gives a clear go-ahead.
 
-## Parallel Agent Worktrees
-
-- For parallel coding-agent work, create a dedicated git worktree under `D:\MBank\trees\*` instead of working directly in the main `D:\MBank` checkout.
-- Use `codex/*` branch names by default for agent worktrees unless the user requests a different branch name.
-- Keep the main `D:\MBank` worktree clean for mainline work and coordination.
-- Initialize each agent worktree with the same local secret configuration as the main `D:\MBank` worktree by copying or importing secrets from the main worktree's secret source. Do not create divergent per-worktree secrets unless the user explicitly asks.
-- Each agent should run its own isolated instance of the system from its own worktree, including separate services, ports, database/runtime state, and other mutable dependencies.
-- Do not share a running app instance, database, or service process between parallel agents.
-- Never record secret values in tracked files, planning notes, AGENTS.md, or MBank memory.
-- When creating nested worktrees under `D:\MBank\trees\*`, keep `trees/` excluded locally from the main worktree, for example through `.git/info/exclude`, so nested worktrees do not appear as untracked content.
-
 ## Sparring Partner Mode
 
 - Be strict and willing to push back on the user's ideas.
