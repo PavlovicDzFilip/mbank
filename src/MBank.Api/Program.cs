@@ -70,7 +70,11 @@ builder.Services
             call start_task and follow the returned rules for the current task.
             Call get_task_context for the current focus at task start and re-call it when focus shifts
             before substantive project-specific answers, including exploration.
+            Call get_task_context when uncertain how to proceed and before specific implementation decisions
+            that may depend on project history, prior decisions, constraints, or user preferences.
             Use remember only for durable guidance the user provided or explicitly agreed to store after an exploration offer.
+            Treat user questions about why one approach was chosen instead of another as a strong signal
+            that an assumption, preference, or rule may have been missed; offer memory capture when durable guidance emerges.
             After ideas or direction work, offer capture first; call remember only on approval. Use describe_memory_types for captureOfferPolicy and captureHint type guidance.
             Use get when a retrieved memory needs source evidence.
             Use report_conflict when memories disagree and surface the conflict to the user.

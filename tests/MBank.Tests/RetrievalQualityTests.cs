@@ -121,7 +121,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.DoesNotContain(response.Rules, x =>
             x.Text.StartsWith("MBank should make user working-style preferences", StringComparison.Ordinal));
         Assert.Equal(
-            "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration.",
+            "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration, and when uncertain how to proceed or before specific implementation decisions.",
             response.NextStep);
         Assert.True(response.Onboarding.RequiresExplicitApproval);
     }

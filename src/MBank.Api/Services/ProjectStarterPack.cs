@@ -15,7 +15,7 @@ public static class ProjectStarterPack
     [
         new(
             MemoryType.AgentInstruction,
-            "At the start of product, planning, implementation, debugging, or review work, call `start_task` and follow its rules, then call `get_task_context` for the current focus. Re-call `get_task_context` when conversation focus changes before substantive project-specific answers, including exploration.",
+            "At the start of product, planning, implementation, debugging, or review work, call `start_task` and follow its rules, then call `get_task_context` for the current focus. Re-call `get_task_context` when conversation focus changes before substantive project-specific answers, when uncertain how to proceed, and before specific implementation decisions.",
             "MBank task startup",
             ["mbank", "mcp", "startup"],
             0.98),
@@ -42,6 +42,12 @@ public static class ProjectStarterPack
             "After substantive exploration (ideas, direction, tradeoffs), offer to store durable candidates in MBank with suggested types from describe_memory_types captureHint. Call remember only after the user agrees.",
             "Offer MBank capture after exploration",
             ["mbank", "mcp", "remember", "exploration"],
+            0.98),
+        new(
+            MemoryType.AgentInstruction,
+            "When the user asks why one approach was chosen instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed. Pause to identify the possible correction and offer memory capture if durable guidance emerges; do not store the agent's guess as fact before confirmation.",
+            "Challenge-driven memory capture",
+            ["mbank", "mcp", "remember", "correction"],
             0.98),
         new(
             MemoryType.AgentInstruction,

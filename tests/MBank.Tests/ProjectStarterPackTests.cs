@@ -18,6 +18,8 @@ public sealed class ProjectStarterPackTests
         var summaries = ProjectStarterPack.Memories.Select(x => x.Summary).ToArray();
 
         Assert.Contains(summaries, x => x.Contains("start_task", StringComparison.Ordinal));
+        Assert.Contains(summaries, x => x.Contains("uncertain how to proceed", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(summaries, x => x.Contains("why one approach was chosen instead of another", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(summaries, x => x.Contains("sparring partner", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(summaries, x => x.Contains("small, focused commits", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(summaries, x => x.Contains("fail-fast", StringComparison.OrdinalIgnoreCase));
