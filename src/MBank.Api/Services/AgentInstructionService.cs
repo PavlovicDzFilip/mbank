@@ -31,7 +31,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         "Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.",
         "Use `resolve_conflict` when the user clarifies which conflicting memory should remain authoritative; this marks superseded memories so normal retrieval stops returning them.",
         "Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.",
-        "If MBank reports that this instruction block is missing or outdated, ask the user before updating agent instruction files or running the bootstrap script. Do not modify agent instruction files without explicit user approval."
+        "Report the MBank agent instruction version from onboarding status. If MBank reports that repo instruction files are missing, outdated, or not checkable from the server, suggest a user-approved instruction update or bootstrap run. Do not modify agent instruction files without explicit user approval."
     ];
 
     public static readonly string CanonicalInstructionBlock = $"""
@@ -44,7 +44,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
 
         1. Call `start_task` to retrieve current MBank agent rules and working-style guidance for this task.
         2. Follow the returned rules for the current task.
-        3. If MBank reports that agent instruction files are missing or outdated, ask the user before updating files or running the bootstrap script.
+        3. Report the MBank agent instruction version from onboarding status. If MBank reports that agent instruction files are missing, outdated, or not checkable from the server, ask the user before updating files or running the bootstrap script.
         4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
 
         Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; when the user references prior decisions or constraints you have not yet retrieved for this focus; when you are uncertain how to proceed; before choosing between materially different technical approaches; or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip re-calls for trivial same-focus follow-ups.
@@ -86,7 +86,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
 
         Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
 
-        If MBank reports that this instruction block is missing or outdated, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
+        Report the MBank agent instruction version from onboarding status. If MBank reports that this instruction block is missing, outdated, or not checkable from the server, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
         <!-- mbank:end -->
         """;
 
@@ -99,7 +99,12 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
 
     public OnboardingStatusResponse CheckOnboarding()
     {
-        var root = ResolveRoot();
+        var root = ResolveInspectableRoot();
+        if (root is null)
+        {
+            return BuildNotCheckableStatus();
+        }
+
         var files = Targets
             .Select(target => InspectTarget(root, target))
             .ToArray();
@@ -126,7 +131,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
             CanonicalInstructionBlock);
     }
 
-    private string ResolveRoot()
+    private string? ResolveInspectableRoot()
     {
         var configuredRoot = configuration["MBank:AgentInstructionsRoot"];
         if (!string.IsNullOrWhiteSpace(configuredRoot))
@@ -135,8 +140,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         }
 
         return FindNearestDirectoryWithKnownFiles(Directory.GetCurrentDirectory())
-            ?? FindNearestDirectoryWithKnownFiles(environment.ContentRootPath)
-            ?? Directory.GetCurrentDirectory();
+            ?? FindNearestDirectoryWithKnownFiles(environment.ContentRootPath);
     }
 
     private static string? FindNearestDirectoryWithKnownFiles(string startDirectory)
@@ -235,6 +239,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         {
             "current" => "At least one supported agent instruction file has the current MBank block.",
             "outdated" => "A supported agent instruction file has a stale or unversioned MBank block.",
+            "not_checkable" => $"This MBank server uses agent instruction version {LatestInstructionVersion}, but cannot inspect repo instruction files from here.",
             _ => "No current MBank agent instruction block was found in supported instruction files."
         };
     }
@@ -266,8 +271,24 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         {
             "current" => "No onboarding action is needed.",
             "outdated" => $"Tell the user MBank agent instructions are outdated and ask whether to update the marked block or run `curl -fsSL {BootstrapScriptUrl} | sh`. Do not modify files without explicit approval.",
+            "not_checkable" => $"Report that this MBank server uses agent instruction version {LatestInstructionVersion}. Suggest checking repo instruction files for a current `mbank:start` block, or ask whether to run `curl -fsSL {BootstrapScriptUrl} | sh` from the repository root. Do not modify files without explicit approval.",
             _ => $"Tell the user MBank agent instructions are missing and ask whether to run `curl -fsSL {BootstrapScriptUrl} | sh` from the repository root. Do not modify files without explicit approval."
         };
+    }
+
+    private static OnboardingStatusResponse BuildNotCheckableStatus()
+    {
+        return new OnboardingStatusResponse(
+            "not_checkable",
+            BuildSummary("not_checkable"),
+            LatestInstructionVersion,
+            BootstrapScriptUrl,
+            RequiresExplicitApproval: true,
+            [],
+            [
+                "MBank cannot inspect repo instruction files from this server process. Ask the user before proposing an instruction update or running the bootstrap script."
+            ],
+            BuildRecommendedAction("not_checkable"));
     }
 
     private static bool IsOlderVersion(string installedVersion, string latestVersion)
