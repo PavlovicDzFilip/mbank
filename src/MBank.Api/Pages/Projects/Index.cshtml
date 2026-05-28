@@ -55,6 +55,13 @@
             <label class="field-label" asp-for="Name">Name</label>
             <input asp-for="Name" autocomplete="off" placeholder="My repo" />
             <span asp-validation-for="Name" class="field-error"></span>
+            <div class="credential-option">
+                <label class="field-label" asp-for="OpenAiApiKey">OpenAI API key <span class="label-optional">optional</span></label>
+                <input asp-for="OpenAiApiKey" type="password" autocomplete="off" placeholder="sk-..." />
+                <p class="dialog-copy">
+                    Add a customer-owned key when this project should use that OpenAI account's billing, data controls, retention settings, and enterprise agreements. Leave it blank to use MBank's default OpenAI key.
+                </p>
+            </div>
             <div class="dialog-option">
                 <label class="filter-toggle">
                     <input asp-for="SeedStarterPack" type="checkbox" />

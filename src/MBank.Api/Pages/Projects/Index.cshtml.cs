@@ -15,6 +15,10 @@ public sealed class IndexModel(ProjectWorkspaceService workspace) : Authenticate
     public string Name { get; set; } = string.Empty;
 
     [BindProperty]
+    [Display(Name = "OpenAI API key")]
+    public string? OpenAiApiKey { get; set; }
+
+    [BindProperty]
     [Display(Name = "Include default agent guidance")]
     public bool SeedStarterPack { get; set; } = true;
 
@@ -47,9 +51,18 @@ public sealed class IndexModel(ProjectWorkspaceService workspace) : Authenticate
 
         try
         {
-            var project = await workspace.CreateProjectAsync(userId, Name, SeedStarterPack, cancellationToken);
+            var project = await workspace.CreateProjectAsync(
+                userId,
+                Name,
+                OpenAiApiKey,
+                SeedStarterPack,
+                cancellationToken);
             TempData["OnboardingGuide"] = "project";
             return RedirectToPage("/Projects/Detail", new { id = project.Id.Value });
+        }
+        catch (ProjectWorkspaceException ex)
+        {
+            return await ShowCreateErrorAsync(userId, ex.Message, cancellationToken);
         }
         catch (ArgumentException)
         {

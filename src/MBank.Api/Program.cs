@@ -56,6 +56,7 @@ builder.Services.AddScoped<IEmbeddingService, OpenAiEmbeddingService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddSingleton<AgentInstructionService>();
 builder.Services.AddScoped<MagicLinkAuthenticationService>();
+builder.Services.AddScoped<ProjectOpenAiCredentialService>();
 builder.Services.AddScoped<ProjectWorkspaceService>();
 builder.Services.AddScoped<MemoryWorkspaceService>();
 builder.Services.AddScoped<MemoryService>();

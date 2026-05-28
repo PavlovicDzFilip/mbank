@@ -291,6 +291,38 @@ namespace MBank.Api.Data.Migrations
                     b.ToTable("project_memberships", (string)null);
                 });
 
+            modelBuilder.Entity("MBank.Api.Domain.ProjectOpenAiCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApiKeySuffix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EncryptedApiKey")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId")
+                        .IsUnique();
+
+                    b.ToTable("project_openai_credentials", (string)null);
+                });
+
             modelBuilder.Entity("MBank.Api.Domain.SourceRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -418,6 +450,15 @@ namespace MBank.Api.Data.Migrations
                     b.HasOne("MBank.Api.Domain.UserAccount", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MBank.Api.Domain.ProjectOpenAiCredential", b =>
+                {
+                    b.HasOne("MBank.Api.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
