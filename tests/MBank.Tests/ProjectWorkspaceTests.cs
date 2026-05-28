@@ -69,6 +69,18 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task Create_project_dialog_explains_openai_api_key_option()
+    {
+        var client = await CreateSignedInClientAsync("dialog.openai@example.test");
+        var page = await client.GetAsync("/projects");
+        var body = await page.Content.ReadAsStringAsync();
+
+        Assert.Contains("OpenAI API key", body);
+        Assert.Contains("billing, data controls, retention settings, and enterprise agreements", body);
+        Assert.Contains("Leave it blank to use MBank's default OpenAI key", body);
+    }
+
+    [Fact]
     public async Task New_project_without_starter_pack_option_has_no_memories()
     {
         var client = await CreateSignedInClientAsync("unseeded@example.test");
@@ -92,6 +104,60 @@ public sealed class ProjectWorkspaceTests(MBankWebApplicationFactory factory)
             x => x.UserId == user.Id && x.ProjectId == new ProjectId(projectId));
 
         Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task New_project_can_store_customer_openai_api_key()
+    {
+        var client = await CreateSignedInClientAsync("customer.key@example.test");
+        const string apiKey = "sk-test-customer-owned-openai-key-1234";
+
+        var create = await PostAntiforgeryFormAsync(
+            client,
+            "/projects",
+            new Dictionary<string, string>
+            {
+                ["Name"] = "Customer Key Project",
+                ["OpenAiApiKey"] = apiKey
+            },
+            "Create");
+        Assert.Equal(HttpStatusCode.Redirect, create.StatusCode);
+        var projectId = ExtractProjectId(create.Headers.Location!.OriginalString);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
+        var credential = await db.ProjectOpenAiCredentials.SingleAsync(
+            x => x.ProjectId == new ProjectId(projectId));
+
+        Assert.Equal("1234", credential.ApiKeySuffix);
+        Assert.DoesNotContain(apiKey, credential.EncryptedApiKey, StringComparison.Ordinal);
+
+        var credentials = scope.ServiceProvider.GetRequiredService<ProjectOpenAiCredentialService>();
+        var resolvedApiKey = await credentials.ResolveApiKeyAsync(new ProjectId(projectId), CancellationToken.None);
+        Assert.Equal(apiKey, resolvedApiKey);
+    }
+
+    [Fact]
+    public async Task New_project_without_customer_openai_api_key_uses_default_openai_api_key()
+    {
+        var client = await CreateSignedInClientAsync("default.key@example.test");
+
+        var create = await PostAntiforgeryFormAsync(
+            client,
+            "/projects",
+            new Dictionary<string, string> { ["Name"] = "Default Key Project" },
+            "Create");
+        Assert.Equal(HttpStatusCode.Redirect, create.StatusCode);
+        var projectId = ExtractProjectId(create.Headers.Location!.OriginalString);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<MemoryDbContext>();
+        Assert.False(await db.ProjectOpenAiCredentials.AnyAsync(
+            x => x.ProjectId == new ProjectId(projectId)));
+
+        var credentials = scope.ServiceProvider.GetRequiredService<ProjectOpenAiCredentialService>();
+        var resolvedApiKey = await credentials.ResolveApiKeyAsync(new ProjectId(projectId), CancellationToken.None);
+        Assert.Equal("test-api-key", resolvedApiKey);
     }
 
     [Fact]

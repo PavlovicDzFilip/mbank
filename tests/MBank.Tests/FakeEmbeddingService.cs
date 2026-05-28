@@ -1,4 +1,5 @@
 using MBank.Api.Services;
+using MBank.Api.Domain;
 using Pgvector;
 
 namespace MBank.Tests;
@@ -39,7 +40,7 @@ internal sealed class FakeEmbeddingService : IEmbeddingService
         ("evidence", 8, 1.0f)
     ];
 
-    public Task<Vector> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken)
+    public Task<Vector> GenerateEmbeddingAsync(ProjectId projectId, string text, CancellationToken cancellationToken)
     {
         var vector = new float[Dimensions];
         var normalized = text.ToLowerInvariant();

@@ -9,6 +9,8 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
 
     public DbSet<Project> Projects => Set<Project>();
 
+    public DbSet<ProjectOpenAiCredential> ProjectOpenAiCredentials => Set<ProjectOpenAiCredential>();
+
     public DbSet<ProjectMembership> ProjectMemberships => Set<ProjectMembership>();
 
     public DbSet<AccessToken> AccessTokens => Set<AccessToken>();
@@ -49,6 +51,27 @@ public sealed class MemoryDbContext(DbContextOptions<MemoryDbContext> options) :
                 .HasConversion(id => id.Value, value => new ProjectId(value));
             entity.Property(x => x.Name)
                 .HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<ProjectOpenAiCredential>(entity =>
+        {
+            entity.ToTable("project_openai_credentials");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id)
+                .HasConversion(id => id.Value, value => new ProjectOpenAiCredentialId(value));
+            entity.Property(x => x.ProjectId)
+                .HasConversion(id => id.Value, value => new ProjectId(value));
+            entity.Property(x => x.EncryptedApiKey)
+                .IsRequired()
+                .HasMaxLength(4096);
+            entity.Property(x => x.ApiKeySuffix)
+                .IsRequired()
+                .HasMaxLength(16);
+            entity.HasIndex(x => x.ProjectId).IsUnique();
+            entity.HasOne<Project>()
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ProjectMembership>(entity =>

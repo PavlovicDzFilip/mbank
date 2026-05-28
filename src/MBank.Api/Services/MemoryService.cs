@@ -157,7 +157,7 @@ public sealed class MemoryService(
         ValidateTaskRequest(request);
 
         var queryText = BuildTaskQueryText(request);
-        var queryVector = await embeddings.GenerateEmbeddingAsync(queryText, cancellationToken);
+        var queryVector = await embeddings.GenerateEmbeddingAsync(scope.ProjectId, queryText, cancellationToken);
         var limit = Math.Clamp(request.Limit, 1, 20);
 
         var candidateLimit = Math.Max(limit * 4, 20);
