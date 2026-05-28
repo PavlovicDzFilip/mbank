@@ -16,11 +16,13 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
     public static readonly IReadOnlyList<string> TaskStartRules =
     [
         "Use the configured `mbank` MCP server proactively for durable project memory and guidance.",
-        "After `start_task`, call `get_task_context` with a structured task description for the current focus before proposing a plan or making changes.",
+        "After `start_task`, call `get_task_context` with a structured task description for the current focus before proposing a plan, making changes, or choosing a specific technical implementation.",
         "Re-call `get_task_context` when conversation focus changes—new topic, product area, technical subject, or phase such as exploration, planning, implementation, or debugging—before answering substantive project-specific questions, including exploratory ones. Skip re-calls for trivial same-focus follow-ups.",
+        "Call `get_task_context` when uncertain how to proceed, before choosing between materially different technical approaches, or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences.",
         "Use `describe_memory_types` when you need memory types, captureHint guidance, or captureOfferPolicy before offering or calling `remember`.",
         $"When calling `remember`, set each memory type to one of the valid MemoryType values: {ValidMemoryTypeValues}. Do not invent new type values.",
         "Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.",
+        "When the user asks why one approach was chosen instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed. Pause to identify the possible correction, then offer to store durable guidance in MBank if the exchange reveals it. Do not store the agent's guess as fact before the user confirms the underlying guidance.",
         "After substantive exploration (ideas, direction, tradeoffs), offer to store durable candidates using types suggested by captureHint—such as `note`, `product-open-question`, `product-strategy`, or `product-reasoning`. Do not auto-store brainstorm output or rejected options.",
         "When `get_task_context` returns a `capture_offer` attention item, follow it after answering: offer capture, then call `remember` only if the user agrees.",
         "When calling `remember` for a technical-rule, technical-convention, or technical-preference, consider mechanical enforcement via repo tooling (Roslyn analyzer, EditorConfig, linter, or CI). If automatable, recommend implementing tooling first, then store a short memory with rationale and the diagnostic or rule identifier.",
@@ -45,11 +47,13 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         3. Report the MBank agent instruction version from onboarding status. If MBank reports that agent instruction files are missing, outdated, or not checkable from the server, ask the user before updating files or running the bootstrap script.
         4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
 
-        Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; or when the user references prior decisions or constraints you have not yet retrieved for this focus. Skip re-calls for trivial same-focus follow-ups.
+        Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; when the user references prior decisions or constraints you have not yet retrieved for this focus; when you are uncertain how to proceed; before choosing between materially different technical approaches; or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip re-calls for trivial same-focus follow-ups.
 
         Before proposing a plan, making changes, or answering substantive project-specific questions (including exploration), use memories from the latest `get_task_context` result for the current focus.
 
         Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
+
+        When the user asks why the agent chose one approach instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed. Pause and identify the possible correction before continuing. If the exchange reveals durable guidance, offer to store it in MBank, or call `remember` when the user explicitly asks to store it. Do not store the agent's guess as fact before the user confirms the underlying guidance.
 
         ## Offering to capture memory
 

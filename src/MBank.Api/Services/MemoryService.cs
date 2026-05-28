@@ -148,7 +148,7 @@ public sealed class MemoryService(
             "Loaded current MBank agent rules for this task. Instruction-file updates affect future task startup; use the returned rules now.",
             rules,
             agentInstructions.CheckOnboarding(),
-            "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration.");
+            "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration, and when uncertain how to proceed or before specific implementation decisions.");
     }
 
     public async Task<TaskContextResponse> GetTaskContextAsync(TaskContextRequest request, CancellationToken cancellationToken)
@@ -157,7 +157,7 @@ public sealed class MemoryService(
         ValidateTaskRequest(request);
 
         var queryText = BuildTaskQueryText(request);
-        var queryVector = await embeddings.GenerateEmbeddingAsync(queryText, cancellationToken);
+        var queryVector = await embeddings.GenerateEmbeddingAsync(scope.ProjectId, queryText, cancellationToken);
         var limit = Math.Clamp(request.Limit, 1, 20);
 
         var candidateLimit = Math.Max(limit * 4, 20);

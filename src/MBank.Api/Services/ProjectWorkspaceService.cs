@@ -4,7 +4,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MBank.Api.Services;
 
-public sealed class ProjectWorkspaceService(MemoryDbContext db, MemoryService memories)
+public sealed class ProjectWorkspaceService(
+    MemoryDbContext db,
+    MemoryService memories,
+    ProjectOpenAiCredentialService openAiCredentials)
 {
     public async Task<IReadOnlyList<Project>> ListProjectsAsync(
         UserId userId,
@@ -22,12 +25,14 @@ public sealed class ProjectWorkspaceService(MemoryDbContext db, MemoryService me
     public async Task<Project> CreateProjectAsync(
         UserId userId,
         string name,
+        string? openAiApiKey,
         bool seedStarterPack,
         CancellationToken cancellationToken)
     {
         var project = Project.Create(name);
         db.Projects.Add(project);
         db.ProjectMemberships.Add(ProjectMembership.Create(userId, project.Id));
+        await openAiCredentials.StoreProjectApiKeyAsync(project.Id, openAiApiKey, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
         if (seedStarterPack)

@@ -9,17 +9,6 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - After the product direction is clear, propose a technical solution.
 - Implement only after the user gives a clear go-ahead.
 
-## Parallel Agent Worktrees
-
-- For parallel coding-agent work, create a dedicated git worktree under `D:\MBank\trees\*` instead of working directly in the main `D:\MBank` checkout.
-- Use `codex/*` branch names by default for agent worktrees unless the user requests a different branch name.
-- Keep the main `D:\MBank` worktree clean for mainline work and coordination.
-- Initialize each agent worktree with the same local secret configuration as the main `D:\MBank` worktree by copying or importing secrets from the main worktree's secret source. Do not create divergent per-worktree secrets unless the user explicitly asks.
-- Each agent should run its own isolated instance of the system from its own worktree, including separate services, ports, database/runtime state, and other mutable dependencies.
-- Do not share a running app instance, database, or service process between parallel agents.
-- Never record secret values in tracked files, planning notes, AGENTS.md, or MBank memory.
-- When creating nested worktrees under `D:\MBank\trees\*`, keep `trees/` excluded locally from the main worktree, for example through `.git/info/exclude`, so nested worktrees do not appear as untracked content.
-
 ## Sparring Partner Mode
 
 - Be strict and willing to push back on the user's ideas.
@@ -45,11 +34,13 @@ At the start of a new product, planning, implementation, debugging, or review ta
 3. Report the MBank agent instruction version from onboarding status. If MBank reports that agent instruction files are missing, outdated, or not checkable from the server, ask the user before updating files or running the bootstrap script.
 4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
 
-Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; or when the user references prior decisions or constraints you have not yet retrieved for this focus. Skip re-calls for trivial same-focus follow-ups.
+Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; when the user references prior decisions or constraints you have not yet retrieved for this focus; when you are uncertain how to proceed; before choosing between materially different technical approaches; or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip re-calls for trivial same-focus follow-ups.
 
 Before proposing a plan, making changes, or answering substantive project-specific questions (including exploration), use memories from the latest `get_task_context` result for the current focus.
 
 Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
+
+When the user asks why the agent chose one approach instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed. Pause and identify the possible correction before continuing. If the exchange reveals durable guidance, offer to store it in MBank, or call `remember` when the user explicitly asks to store it. Do not store the agent's guess as fact before the user confirms the underlying guidance.
 
 ## Offering to capture memory
 

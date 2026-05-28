@@ -59,7 +59,7 @@ public sealed class MemoryEntryTests
 
     private sealed class RecordingEmbeddingService(Func<string, Vector> generateEmbedding) : IEmbeddingService
     {
-        public Task<Vector> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken)
+        public Task<Vector> GenerateEmbeddingAsync(ProjectId projectId, string text, CancellationToken cancellationToken)
         {
             return Task.FromResult(generateEmbedding(text));
         }

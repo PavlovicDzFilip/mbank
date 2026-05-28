@@ -65,7 +65,7 @@ public sealed class MemoryEntry
         var normalizedSubject = OptionalText(subject, "Memory subject", 256, nameof(subject));
         var normalizedTags = NormalizeTags(tags);
         var searchText = BuildSearchText(type, normalizedSummary, normalizedSubject, normalizedTags, sourceText);
-        var embedding = await embeddings.GenerateEmbeddingAsync(searchText, cancellationToken)
+        var embedding = await embeddings.GenerateEmbeddingAsync(projectId, searchText, cancellationToken)
             ?? throw new InvalidOperationException("Memory embedding factory returned null.");
 
         return new MemoryEntry

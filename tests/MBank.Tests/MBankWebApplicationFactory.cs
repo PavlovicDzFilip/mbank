@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -15,10 +14,18 @@ namespace MBank.Tests;
 public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private TestDatabase? _database;
+    private readonly Dictionary<string, string?> _originalEnvironment = [];
 
     public async Task InitializeAsync()
     {
         _database = await TestDatabase.CreateAsync();
+        SetTestEnvironment("ConnectionStrings__MemoryDb", _database.ConnectionString);
+        SetTestEnvironment("OpenAI__ApiKey", "test-api-key");
+        SetTestEnvironment("OpenAI__EmbeddingModel", "test-embedding-model");
+        SetTestEnvironment("OpenAI__EmbeddingDimensions", "1536");
+        SetTestEnvironment("Smtp__Host", "localhost");
+        SetTestEnvironment("Smtp__Port", "1025");
+        SetTestEnvironment("Smtp__FromAddress", "noreply@example.test");
     }
 
     public new async Task DisposeAsync()
@@ -27,6 +34,11 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
         if (_database is not null)
         {
             await _database.DisposeAsync();
+        }
+
+        foreach (var (name, value) in _originalEnvironment)
+        {
+            Environment.SetEnvironmentVariable(name, value);
         }
     }
 
@@ -42,21 +54,6 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.ConfigureAppConfiguration((_, configuration) =>
-        {
-            configuration.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:MemoryDb"] = RequireDatabase().ConnectionString,
-                ["OpenAI:ApiKey"] = "test-api-key",
-                ["OpenAI:EmbeddingModel"] = "test-embedding-model",
-                ["OpenAI:EmbeddingDimensions"] = "1536",
-                ["Smtp:Host"] = "localhost",
-                ["Smtp:Port"] = "1025",
-                ["Smtp:FromAddress"] = "noreply@example.test",
-                ["MagicLink:LifetimeMinutes"] = "15"
-            });
-        });
-
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<DbContextOptions<MemoryDbContext>>();
@@ -87,5 +84,15 @@ public sealed class MBankWebApplicationFactory : WebApplicationFactory<Program>,
     private TestDatabase RequireDatabase()
     {
         return _database ?? throw new InvalidOperationException("Test database has not been initialized.");
+    }
+
+    private void SetTestEnvironment(string name, string value)
+    {
+        if (!_originalEnvironment.ContainsKey(name))
+        {
+            _originalEnvironment[name] = Environment.GetEnvironmentVariable(name);
+        }
+
+        Environment.SetEnvironmentVariable(name, value);
     }
 }

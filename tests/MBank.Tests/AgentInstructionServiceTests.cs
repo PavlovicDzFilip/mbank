@@ -57,6 +57,14 @@ public sealed class AgentInstructionServiceTests : IDisposable
         Assert.Contains("Re-call `get_task_context`", block.Content, StringComparison.Ordinal);
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
             x.Contains("Re-call `get_task_context`", StringComparison.Ordinal));
+        Assert.Contains("uncertain how to proceed", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("specific implementation decisions", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("uncertain how to proceed", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("why the agent chose one approach instead of another", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("strong signal that an assumption, preference, or rule may have been missed", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("why one approach was chosen instead of another", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Offering to capture memory", block.Content, StringComparison.Ordinal);
         Assert.Contains("capture_offer", block.Content, StringComparison.Ordinal);
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>

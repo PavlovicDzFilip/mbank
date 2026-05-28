@@ -667,6 +667,23 @@ button:hover {
   gap: 6px;
 }
 
+.credential-option {
+  background: rgba(86, 216, 182, 0.06);
+  border: 1px solid rgba(86, 216, 182, 0.14);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.label-optional {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 4px;
+  text-transform: uppercase;
+}
+
 .dialog-option .dialog-copy {
   margin: 0;
 }
