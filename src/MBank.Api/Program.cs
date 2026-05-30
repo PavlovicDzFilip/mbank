@@ -119,7 +119,11 @@ app.MapRazorPages();
 
 app.UseWhen(
     context => context.Request.Path.StartsWithSegments("/mcp"),
-    branch => branch.UseMiddleware<McpProjectTokenMiddleware>());
+    branch =>
+    {
+        branch.UseMiddleware<McpJsonRpcErrorMiddleware>();
+        branch.UseMiddleware<McpProjectTokenMiddleware>();
+    });
 
 app.MapMcp("/mcp");
 
