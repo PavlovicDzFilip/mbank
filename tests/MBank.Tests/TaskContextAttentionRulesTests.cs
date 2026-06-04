@@ -29,4 +29,20 @@ public sealed class TaskContextAttentionRulesTests
         Assert.Contains("remember", item.Summary, StringComparison.OrdinalIgnoreCase);
         Assert.False(string.IsNullOrWhiteSpace(item.Question));
     }
+
+    [Theory]
+    [InlineData("Let's experiment with a rough idea for memory sessions.")]
+    [InlineData("This is thinking out loud, not final, but compare approaches.")]
+    [InlineData("Run a spike and prototype the discovery mode.")]
+    [InlineData("What if we keep this as a draft hypothesis?")]
+    public void ShouldIncludeExperimentalMemories_matches_experiment_start_phrases(string description)
+    {
+        var request = new TaskContextRequest(
+            new TaskDescription(
+                "Explore provisional memory",
+                description,
+                "planning"));
+
+        Assert.True(TaskContextAttentionRules.ShouldIncludeExperimentalMemories(request));
+    }
 }

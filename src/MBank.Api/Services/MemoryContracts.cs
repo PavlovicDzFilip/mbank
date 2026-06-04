@@ -24,7 +24,8 @@ public sealed record MemoryDraftInput(
     string Summary,
     string? Subject = null,
     IReadOnlyList<string>? Tags = null,
-    double? Confidence = null)
+    double? Confidence = null,
+    MemoryLifecycleValue Lifecycle = MemoryLifecycleValue.Accepted)
 {
     public MemoryDraft ToMemoryDraft()
     {
@@ -33,7 +34,8 @@ public sealed record MemoryDraftInput(
             Summary,
             Subject,
             Tags,
-            Confidence);
+            Confidence,
+            Lifecycle);
     }
 }
 
@@ -42,7 +44,8 @@ public sealed record MemoryDraft(
     string Summary,
     string? Subject = null,
     IReadOnlyList<string>? Tags = null,
-    double? Confidence = null);
+    double? Confidence = null,
+    MemoryLifecycleValue Lifecycle = MemoryLifecycleValue.Accepted);
 
 public sealed record SourceDraft(
     string? SourceKind = null,
@@ -61,7 +64,9 @@ public sealed record StoredMemory(
     string Summary,
     string? Subject,
     IReadOnlyList<string> Tags,
-    double Confidence);
+    double Confidence,
+    MemoryLifecycleValue Lifecycle,
+    string Status);
 
 public sealed record PossibleConflict(
     Guid ExistingMemoryId,
@@ -201,6 +206,16 @@ public enum MemoryTypeValue
     Note
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<MemoryLifecycleValue>))]
+public enum MemoryLifecycleValue
+{
+    [JsonStringEnumMemberName("accepted")]
+    Accepted,
+
+    [JsonStringEnumMemberName("experimental")]
+    Experimental
+}
+
 public static class MemoryTypeValueExtensions
 {
     public static MemoryType ToMemoryType(this MemoryTypeValue value)
@@ -245,7 +260,9 @@ public sealed record MemoryMatch(
     IReadOnlyList<string> Tags,
     double MemoryConfidence,
     double MatchScore,
-    string MatchStrength);
+    string MatchStrength,
+    string Status,
+    MemoryLifecycleValue Lifecycle);
 
 public sealed record MemoryDetail(
     Guid Id,
@@ -293,6 +310,17 @@ public sealed record ResolveConflictResponse(
     Guid? KeptMemoryId = null,
     IReadOnlyList<Guid>? SupersededMemoryIds = null);
 
+public sealed record PromoteMemoryRequest(
+    Guid MemoryId,
+    IReadOnlyList<Guid>? SupersededMemoryIds = null,
+    string? Clarification = null);
+
+public sealed record PromoteMemoryResponse(
+    bool Promoted,
+    string Message,
+    Guid? PromotedMemoryId = null,
+    IReadOnlyList<Guid>? SupersededMemoryIds = null);
+
 public sealed record OnboardingStatusResponse(
     string Status,
     string Summary,
@@ -318,4 +346,10 @@ public sealed record AgentInstructionBlock(
 public sealed record MemoryTypeCatalogResponse(
     int ModelVersion,
     IReadOnlyList<MemoryTypeDefinition> Types,
-    string CaptureOfferPolicy);
+    string CaptureOfferPolicy,
+    ExperimentalMemoryGuidanceResponse ExperimentalMemoryGuidance);
+
+public sealed record ExperimentalMemoryGuidanceResponse(
+    IReadOnlyList<string> StartSignals,
+    IReadOnlyList<string> EndSignals,
+    IReadOnlyList<string> AgentRules);

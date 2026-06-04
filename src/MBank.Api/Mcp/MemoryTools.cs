@@ -28,7 +28,7 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = true)]
-    [Description("Get relevant memories for the current task focus. Call at task start, whenever focus shifts (new topic, product area, technical subject, or phase), when uncertain how to proceed, before choosing between materially different technical approaches, and before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip on trivial same-focus follow-ups. Strong matches may guide work; possible matches are hints to confirm before relying on them. Always inspect canProceed and attentionItems. A capture_offer attention item means offer to store durable exploration outcomes after answering, then call remember only if the user agrees. If canProceed is false or any attention item has action=ask_user, stop and ask the user the provided question before planning or implementing. The response may also warn when MBank agent instruction files are missing or outdated; ask the user before updating files or running bootstrap scripts.")]
+    [Description("Get relevant memories for the current task focus. Call at task start, whenever focus shifts (new topic, product area, technical subject, or phase), when uncertain how to proceed, before choosing between materially different technical approaches, and before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip on trivial same-focus follow-ups. Strong matches may guide work; possible matches are hints to confirm before relying on them. Normal retrieval is accepted memory only; tasks that look exploratory may include experimental memories with an experimental_memory attention item, and those are provisional until promoted. Always inspect canProceed and attentionItems. A capture_offer attention item means offer to store durable or experimental exploration outcomes after answering, then call remember only if the user agrees. If canProceed is false or any attention item has action=ask_user, stop and ask the user the provided question before planning or implementing. The response may also warn when MBank agent instruction files are missing or outdated; ask the user before updating files or running bootstrap scripts.")]
     public static Task<TaskContextResponse> GetTaskContext(
         MemoryService memoryService,
         [Description("Structured description of the task and optional work area.")] TaskContextRequest request,
@@ -67,6 +67,16 @@ public static class MemoryTools
         return memoryService.ResolveConflictAsync(request, cancellationToken);
     }
 
+    [McpServerTool(ReadOnly = false, Destructive = false)]
+    [Description("Promote one experimental memory into accepted memory after the user confirms the experiment has converged. Promotion is the only point where experimental memory may supersede accepted memories. If superseding accepted memories, include a clarification explaining the user's decision.")]
+    public static Task<PromoteMemoryResponse> PromoteMemory(
+        MemoryService memoryService,
+        [Description("Experimental memory promotion request, with optional accepted memories to supersede and the user's clarification.")] PromoteMemoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        return memoryService.PromoteMemoryAsync(request, cancellationToken);
+    }
+
     [McpServerTool(ReadOnly = true)]
     [Description("Describe the canonical MemoryType values accepted by remember, including descriptions, behavioral flags, and captureHint guidance for offering to store ideas or exploration outcomes. Also returns captureOfferPolicy for when to offer remember versus calling remember silently. Use this when choosing a memory type or preparing a capture offer.")]
     public static MemoryTypeCatalogResponse DescribeMemoryTypes()
@@ -74,7 +84,8 @@ public static class MemoryTools
         return new MemoryTypeCatalogResponse(
             MemoryType.ModelVersion,
             MemoryType.Definitions,
-            MemoryType.CaptureOfferPolicy);
+            MemoryType.CaptureOfferPolicy,
+            MemoryAuthoringGuidance.ExperimentalMemoryGuidance);
     }
 
     [McpServerTool(ReadOnly = true)]
