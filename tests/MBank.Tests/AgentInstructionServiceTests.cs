@@ -81,6 +81,9 @@ public sealed class AgentInstructionServiceTests : IDisposable
         Assert.Contains("Mechanical enforcement for coding rules", block.Content, StringComparison.Ordinal);
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
             x.Contains("Roslyn analyzer", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("agent instruction version", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("not checkable", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -120,6 +123,34 @@ public sealed class AgentInstructionServiceTests : IDisposable
     }
 
     [Fact]
+    public void CheckOnboarding_reports_not_checkable_without_repo_root()
+    {
+        var runtimeRoot = Path.Combine(_root, "app");
+        Directory.CreateDirectory(runtimeRoot);
+        var originalDirectory = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(runtimeRoot);
+            var service = CreateServiceWithoutConfiguredRoot(runtimeRoot);
+
+            var status = service.CheckOnboarding();
+
+            Assert.Equal("not_checkable", status.Status);
+            Assert.Equal(AgentInstructionService.LatestInstructionVersion, status.LatestVersion);
+            Assert.Empty(status.Files);
+            Assert.Contains(AgentInstructionService.LatestInstructionVersion, status.Summary, StringComparison.Ordinal);
+            Assert.Contains("cannot inspect repo instruction files", status.Summary, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("bootstrap", status.RecommendedAction, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("/app", status.RecommendedAction, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDirectory);
+        }
+    }
+
+    [Fact]
     public void Bootstrap_scripts_default_to_all_targets_and_public_server()
     {
         var repoRoot = FindRepositoryRoot();
@@ -152,6 +183,13 @@ public sealed class AgentInstructionServiceTests : IDisposable
             .Build();
 
         return new AgentInstructionService(new TestHostEnvironment(_root), configuration);
+    }
+
+    private static AgentInstructionService CreateServiceWithoutConfiguredRoot(string runtimeRoot)
+    {
+        var configuration = new ConfigurationBuilder().Build();
+
+        return new AgentInstructionService(new TestHostEnvironment(runtimeRoot), configuration);
     }
 
     private static string FindRepositoryRoot()

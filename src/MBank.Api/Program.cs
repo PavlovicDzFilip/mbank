@@ -81,7 +81,7 @@ builder.Services
             Use report_conflict when memories disagree and surface the conflict to the user.
             Use resolve_conflict when the user clarifies which conflicting memory should remain authoritative.
             Use check_onboarding to verify that repo agent instructions are installed and current.
-            If MBank reports missing or outdated agent instruction files, notify the user and ask for explicit approval before updating files or running the bootstrap script.
+            If MBank reports missing, outdated, or not checkable agent instruction files, notify the user and ask for explicit approval before updating files or running the bootstrap script.
             """;
     })
     .WithHttpTransport(options => options.Stateless = true)
@@ -119,7 +119,11 @@ app.MapRazorPages();
 
 app.UseWhen(
     context => context.Request.Path.StartsWithSegments("/mcp"),
-    branch => branch.UseMiddleware<McpProjectTokenMiddleware>());
+    branch =>
+    {
+        branch.UseMiddleware<McpJsonRpcErrorMiddleware>();
+        branch.UseMiddleware<McpProjectTokenMiddleware>();
+    });
 
 app.MapMcp("/mcp");
 

@@ -50,6 +50,32 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task Mcp_endpoint_returns_parse_error_for_malformed_json()
+    {
+        var client = factory.CreateClient();
+        using var message = new HttpRequestMessage(HttpMethod.Post, "/mcp")
+        {
+            Content = new StringContent(
+                "{jsonrpc:\"2.0\",id:\"malformed\",method:\"tools/list\",params:{}}",
+                Encoding.UTF8,
+                "application/json")
+        };
+        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TestDatabase.ProjectToken);
+
+        using var response = await client.SendAsync(message);
+        var body = await response.Content.ReadAsStringAsync();
+        var error = JsonNode.Parse(body)!.AsObject();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("2.0", error["jsonrpc"]!.GetValue<string>());
+        Assert.Null(error["id"]);
+        Assert.Equal(-32700, error["error"]!["code"]!.GetValue<int>());
+        Assert.Equal("Parse error", error["error"]!["message"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task Mcp_endpoint_proves_agent_memory_workflow_end_to_end()
     {
         var client = factory.CreateClient();
