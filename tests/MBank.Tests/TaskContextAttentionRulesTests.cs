@@ -45,4 +45,19 @@ public sealed class TaskContextAttentionRulesTests
 
         Assert.True(TaskContextAttentionRules.ShouldIncludeExperimentalMemories(request));
     }
+
+    [Fact]
+    public void ShouldIncludeExperimentalMemories_ignores_work_area_metadata()
+    {
+        var request = new TaskContextRequest(
+            new TaskDescription(
+                "Implement lifecycle guidance",
+                "Use memory lifecycle guidance for normal implementation work.",
+                "implementation"),
+            new WorkArea(
+                Subject: "Experimental lifecycle",
+                Modules: ["discovery mode", "prototype"]));
+
+        Assert.False(TaskContextAttentionRules.ShouldIncludeExperimentalMemories(request));
+    }
 }

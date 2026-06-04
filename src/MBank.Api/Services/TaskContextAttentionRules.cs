@@ -8,10 +8,7 @@ public static class TaskContextAttentionRules
             " ",
             request.Task.Kind,
             request.Task.Title,
-            request.Task.Description,
-            request.WorkArea?.Subject,
-            string.Join(" ", request.WorkArea?.Modules ?? []),
-            string.Join(" ", request.WorkArea?.Files ?? []));
+            request.Task.Description);
 
         return MemoryAuthoringGuidance.ExperimentalStartSignals.Any(signal =>
                 text.Contains(signal, StringComparison.OrdinalIgnoreCase))
