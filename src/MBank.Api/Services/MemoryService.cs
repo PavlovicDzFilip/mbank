@@ -49,6 +49,7 @@ public sealed class MemoryService(
                 draft.Confidence ?? 0.95,
                 source.SourceText,
                 source.Id,
+                MemoryEntry.ActiveStatus,
                 embeddings,
                 cancellationToken);
             db.Memories.Add(entry);
@@ -98,6 +99,7 @@ public sealed class MemoryService(
                 draft.Confidence ?? 0.7,
                 request.Source?.SourceText,
                 source?.Id,
+                ToMemoryStatus(draft.Lifecycle),
                 embeddings,
                 cancellationToken);
 
@@ -159,11 +161,15 @@ public sealed class MemoryService(
         var queryText = BuildTaskQueryText(request);
         var queryVector = await embeddings.GenerateEmbeddingAsync(scope.ProjectId, queryText, cancellationToken);
         var limit = Math.Clamp(request.Limit, 1, 20);
+        var includeExperimentalMemories = TaskContextAttentionRules.ShouldIncludeExperimentalMemories(request);
 
         var candidateLimit = Math.Max(limit * 4, 20);
         var vectorCandidateRows = await db.Memories
             .AsNoTracking()
-            .Where(x => x.ProjectId == scope.ProjectId && x.Status == MemoryEntry.ActiveStatus && x.Embedding != null)
+            .Where(x => x.ProjectId == scope.ProjectId
+                && (x.Status == MemoryEntry.ActiveStatus
+                    || (includeExperimentalMemories && x.Status == MemoryEntry.ExperimentalStatus))
+                && x.Embedding != null)
             .OrderBy(x => x.Embedding!.CosineDistance(queryVector))
             .Take(candidateLimit)
             .Select(x => new
@@ -179,7 +185,8 @@ public sealed class MemoryService(
             : await db.Memories
                 .AsNoTracking()
                 .Where(x => x.ProjectId == scope.ProjectId
-                    && x.Status == MemoryEntry.ActiveStatus
+                    && (x.Status == MemoryEntry.ActiveStatus
+                        || (includeExperimentalMemories && x.Status == MemoryEntry.ExperimentalStatus))
                     && x.SearchVector.Matches(EF.Functions.ToTsQuery("english", fullTextQuery)))
                 .OrderByDescending(x => x.SearchVector.Rank(
                     EF.Functions.ToTsQuery("english", fullTextQuery),
@@ -399,6 +406,74 @@ public sealed class MemoryService(
             supersededMemoryIds.Select(x => x.Value).ToArray());
     }
 
+    public async Task<PromoteMemoryResponse> PromoteMemoryAsync(PromoteMemoryRequest request, CancellationToken cancellationToken)
+    {
+        var scope = RequireScope();
+        var promotedMemoryId = new MemoryId(request.MemoryId);
+        var supersededMemoryIds = (request.SupersededMemoryIds ?? [])
+            .Distinct()
+            .Select(x => new MemoryId(x))
+            .ToArray();
+
+        if (supersededMemoryIds.Contains(promotedMemoryId))
+        {
+            return new PromoteMemoryResponse(false, "The promoted memory cannot also be superseded.");
+        }
+
+        var clarification = NormalizeOptional(request.Clarification);
+        if (supersededMemoryIds.Length > 0 && clarification is null)
+        {
+            return new PromoteMemoryResponse(false, "A clarification is required when promotion supersedes accepted memories.");
+        }
+
+        var ids = supersededMemoryIds.Append(promotedMemoryId).ToArray();
+        var memories = await db.Memories
+            .Where(x => x.ProjectId == scope.ProjectId && ids.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+        var memoryById = memories.ToDictionary(x => x.Id);
+
+        if (!memoryById.TryGetValue(promotedMemoryId, out var promotedMemory))
+        {
+            return new PromoteMemoryResponse(false, "The experimental memory must exist in the current project.");
+        }
+
+        if (promotedMemory.Status != MemoryEntry.ExperimentalStatus)
+        {
+            return new PromoteMemoryResponse(false, "Only experimental memories can be promoted.");
+        }
+
+        if (supersededMemoryIds.Any(x => !memoryById.ContainsKey(x)))
+        {
+            return new PromoteMemoryResponse(false, "Every superseded memory must exist in the current project.");
+        }
+
+        if (supersededMemoryIds.Any(x => memoryById[x].Status != MemoryEntry.ActiveStatus))
+        {
+            return new PromoteMemoryResponse(false, "Promotion can only supersede accepted active memories.");
+        }
+
+        promotedMemory.Promote();
+
+        foreach (var supersededMemoryId in supersededMemoryIds)
+        {
+            memoryById[supersededMemoryId].Supersede();
+            await UpsertSupersedesLinkAsync(
+                promotedMemoryId,
+                supersededMemoryId,
+                clarification ?? "Promoted from experimental memory.",
+                cancellationToken);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return new PromoteMemoryResponse(
+            true,
+            supersededMemoryIds.Length == 0
+                ? "Experimental memory promoted. It will now appear in normal retrieval."
+                : "Experimental memory promoted and superseded accepted memories. It will now appear in normal retrieval.",
+            promotedMemoryId.Value,
+            supersededMemoryIds.Select(x => x.Value).ToArray());
+    }
+
     private async Task<List<(MemoryEntry Memory, double Distance)>> FindSimilarMemoriesAsync(
         ProjectId projectId,
         Vector vector,
@@ -568,7 +643,9 @@ public sealed class MemoryService(
             scored.Memory.Tags,
             scored.Memory.Confidence,
             NormalizeMatchScore(scored.Score),
-            strength);
+            strength,
+            scored.Memory.Status,
+            ToMemoryLifecycle(scored.Memory.Status));
     }
 
     private static double NormalizeMatchScore(double rawScore)
@@ -617,6 +694,7 @@ public sealed class MemoryService(
         var conflicts = new List<PossibleConflict>();
 
         foreach (var group in scored
+            .Where(x => x.Memory.Status == MemoryEntry.ActiveStatus)
             .Where(x => x.Memory.Subject is not null)
             .GroupBy(x => x.Memory.Subject!, StringComparer.OrdinalIgnoreCase))
         {
@@ -664,6 +742,21 @@ public sealed class MemoryService(
                     match.Memory.Summary,
                     MemoryIds: [match.Memory.Id.Value]);
             }));
+
+        var experimentalMatches = strongMatches
+            .Concat(possibleMatches)
+            .Where(x => x.Memory.Status == MemoryEntry.ExperimentalStatus)
+            .Take(5)
+            .ToArray();
+        if (experimentalMatches.Length > 0)
+        {
+            items.Add(new TaskContextAttentionItem(
+                "experimental_memory",
+                TaskContextAttentionAction.Notice,
+                "Experimental memories were returned because this task looks exploratory. Treat them as provisional and do not let them supersede accepted guidance unless the user promotes them.",
+                "Should any experimental memory be promoted, rejected, or kept experimental?",
+                experimentalMatches.Select(x => x.Memory.Id.Value).ToArray()));
+        }
 
         if (string.IsNullOrWhiteSpace(request.WorkArea?.Subject))
         {
@@ -789,7 +882,29 @@ public sealed class MemoryService(
             entry.Summary,
             entry.Subject,
             entry.Tags,
-            entry.Confidence);
+            entry.Confidence,
+            ToMemoryLifecycle(entry.Status),
+            entry.Status);
+    }
+
+    private static string ToMemoryStatus(MemoryLifecycleValue lifecycle)
+    {
+        return lifecycle switch
+        {
+            MemoryLifecycleValue.Accepted => MemoryEntry.ActiveStatus,
+            MemoryLifecycleValue.Experimental => MemoryEntry.ExperimentalStatus,
+            _ => throw new ArgumentOutOfRangeException(nameof(lifecycle), lifecycle, "Unknown memory lifecycle.")
+        };
+    }
+
+    private static MemoryLifecycleValue ToMemoryLifecycle(string status)
+    {
+        return status switch
+        {
+            MemoryEntry.ActiveStatus => MemoryLifecycleValue.Accepted,
+            MemoryEntry.ExperimentalStatus => MemoryLifecycleValue.Experimental,
+            _ => MemoryLifecycleValue.Accepted
+        };
     }
 
     private static string? NormalizeOptional(string? value)

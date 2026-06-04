@@ -9,6 +9,7 @@ namespace MBank.Api.Domain;
 public sealed class MemoryEntry
 {
     public const string ActiveStatus = "active";
+    public const string ExperimentalStatus = "experimental";
     public const string SupersededStatus = "superseded";
 
     private MemoryEntry()
@@ -56,6 +57,7 @@ public sealed class MemoryEntry
         double confidence,
         string? sourceText,
         SourceRecordId? sourceRecordId,
+        string status,
         IEmbeddingService embeddings,
         CancellationToken cancellationToken)
     {
@@ -77,6 +79,7 @@ public sealed class MemoryEntry
             Subject = normalizedSubject,
             Tags = normalizedTags,
             Confidence = Math.Clamp(confidence, 0, 1),
+            Status = NormalizeStatus(status),
             SearchText = searchText,
             Embedding = embedding,
             SourceRecordId = sourceRecordId
@@ -120,6 +123,22 @@ public sealed class MemoryEntry
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    public void Promote()
+    {
+        if (Status == ActiveStatus)
+        {
+            return;
+        }
+
+        if (Status != ExperimentalStatus)
+        {
+            throw new InvalidOperationException("Only experimental memories can be promoted.");
+        }
+
+        Status = ActiveStatus;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public void ChangeType(MemoryType type)
     {
         if (Type == type)
@@ -139,6 +158,23 @@ public sealed class MemoryEntry
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(20)
             .ToArray() ?? [];
+    }
+
+    private static string NormalizeStatus(string status)
+    {
+        if (string.Equals(status, ActiveStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            return ActiveStatus;
+        }
+
+        if (string.Equals(status, ExperimentalStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            return ExperimentalStatus;
+        }
+
+        throw new ArgumentException(
+            $"Memory status must be '{ActiveStatus}' or '{ExperimentalStatus}'.",
+            nameof(status));
     }
 
     private static string RequiredText(string value, string displayName, int maxLength, string parameterName)

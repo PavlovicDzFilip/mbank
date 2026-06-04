@@ -69,6 +69,15 @@ public sealed class AgentInstructionServiceTests : IDisposable
         Assert.Contains("capture_offer", block.Content, StringComparison.Ordinal);
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
             x.Contains("capture_offer", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("Experimental memory lifecycle", block.Content, StringComparison.Ordinal);
+        Assert.Contains("let's experiment", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("thinking out loud", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("make this durable", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("promote_memory", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("experiment-start", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("promote_memory", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Mechanical enforcement for coding rules", block.Content, StringComparison.Ordinal);
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
             x.Contains("Roslyn analyzer", StringComparison.OrdinalIgnoreCase));

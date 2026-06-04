@@ -38,6 +38,19 @@ public sealed class MemoryTypeTests
             x.Value == "technical-convention"
             && !string.IsNullOrWhiteSpace(x.CaptureHint)
             && x.CaptureHint!.Contains("analyzer", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.ExperimentalMemoryGuidance.StartSignals, x =>
+            x.Contains("experiment", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.ExperimentalMemoryGuidance.StartSignals, x =>
+            x.Contains("brainstorm", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.ExperimentalMemoryGuidance.StartSignals, x =>
+            x.Contains("not final", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.ExperimentalMemoryGuidance.EndSignals, x =>
+            x.Contains("promote", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.ExperimentalMemoryGuidance.EndSignals, x =>
+            x.Contains("implement", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(response.ExperimentalMemoryGuidance.AgentRules, x =>
+            x.Contains("experimental", StringComparison.OrdinalIgnoreCase)
+            && x.Contains("supersede", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
