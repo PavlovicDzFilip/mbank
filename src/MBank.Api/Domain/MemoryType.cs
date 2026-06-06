@@ -13,9 +13,9 @@ public sealed class MemoryType : SmartEnum<MemoryType, string>
         """
         After substantive exploration (ideas, direction, tradeoffs, or what is possible):
         1. Answer using get_task_context and the conversation.
-        2. If durable candidates may matter in future sessions but were not explicitly committed, offer to store them in MBank. List one to three atomic candidates with suggested types from captureHint on describe_memory_types.
-        3. Call remember only after the user agrees or explicitly asks to store something.
-        4. Do not store rejected options, agent speculation the user did not adopt, or ordinary chat.
+        2. If candidates may matter in future sessions but were not explicitly committed, offer accepted storage for durable guidance or experimental storage for provisional ideas. List one to three atomic candidates with suggested types from captureHint on describe_memory_types.
+        3. Call remember only after the user agrees or explicitly asks to store something; use lifecycle `experimental` for provisional ideas that should not guide normal work yet.
+        4. Do not promote rejected options, agent speculation the user did not adopt, or ordinary chat.
         Skip the offer when nothing is plausibly durable or the thread was purely meta.
         """;
 

@@ -88,6 +88,7 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         var getTool = ResolveToolName(tools, "Get");
         var reportConflictTool = ResolveToolName(tools, "ReportConflict");
         var resolveConflictTool = ResolveToolName(tools, "ResolveConflict");
+        var promoteMemoryTool = ResolveToolName(tools, "PromoteMemory");
         var checkOnboardingTool = ResolveToolName(tools, "CheckOnboarding");
 
         var rememberToolDefinition = ResolveTool(tools, rememberTool);
@@ -99,6 +100,10 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             "why one approach was chosen instead of another",
             rememberToolDefinition["description"]!.GetValue<string>(),
             StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            "experimental",
+            rememberToolDefinition["description"]!.GetValue<string>(),
+            StringComparison.OrdinalIgnoreCase);
         var rememberInputSchema = rememberToolDefinition["inputSchema"]!.AsObject();
         var memoryTypeSchema = rememberInputSchema["properties"]!["request"]!["properties"]!["memories"]!["items"]!["properties"]!["type"]!.AsObject();
         Assert.Equal("string", memoryTypeSchema["type"]!.GetValue<string>());
@@ -108,6 +113,17 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             x!.GetValue<string>() == "technical-rule");
         Assert.Contains(memoryTypeSchema["enum"]!.AsArray(), x =>
             x!.GetValue<string>() == "agent-instruction");
+        var lifecycleSchema = rememberInputSchema["properties"]!["request"]!["properties"]!["memories"]!["items"]!["properties"]!["lifecycle"]!.AsObject();
+        Assert.Contains(lifecycleSchema["enum"]!.AsArray(), x =>
+            x!.GetValue<string>() == "accepted");
+        Assert.Contains(lifecycleSchema["enum"]!.AsArray(), x =>
+            x!.GetValue<string>() == "experimental");
+
+        var promoteMemoryToolDefinition = ResolveTool(tools, promoteMemoryTool);
+        Assert.Contains(
+            "experimental memory may supersede accepted memories",
+            promoteMemoryToolDefinition["description"]!.GetValue<string>(),
+            StringComparison.OrdinalIgnoreCase);
 
         var startTask = await CallToolAsync(client, startTaskTool, new JsonObject());
         var startTaskContent = GetStructuredContent(startTask);
@@ -156,6 +172,12 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         Assert.Contains(memoryTypesContent["types"]!.AsArray(), x =>
             x!["value"]!.GetValue<string>() == "technical-rule"
             && !string.IsNullOrWhiteSpace(x["captureHint"]!.GetValue<string>()));
+        Assert.Contains(memoryTypesContent["experimentalMemoryGuidance"]!["startSignals"]!.AsArray(), x =>
+            x!.GetValue<string>().Contains("experiment", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(memoryTypesContent["experimentalMemoryGuidance"]!["startSignals"]!.AsArray(), x =>
+            x!.GetValue<string>().Contains("thinking out loud", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(memoryTypesContent["experimentalMemoryGuidance"]!["endSignals"]!.AsArray(), x =>
+            x!.GetValue<string>().Contains("promote", StringComparison.OrdinalIgnoreCase));
 
         var remember = await CallToolAsync(client, rememberTool, new JsonObject
         {

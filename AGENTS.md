@@ -40,6 +40,16 @@ Before proposing a plan, making changes, or answering substantive project-specif
 
 Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
 
+## Experimental memory lifecycle
+
+Use lifecycle `experimental` only for user-approved provisional ideas, hypotheses, drafts, spikes, prototypes, brainstorm outcomes, and discovery notes that should be kept for later review but should not guide normal work yet. Experimental memories are hidden from normal task recall and must not supersede accepted memories.
+
+Treat these as experiment-start signals: `I want to experiment`, `let's experiment`, `let's explore`, `explore options`, `brainstorm`, `ideate`, `thinking out loud`, `rough idea`, `half-baked idea`, `not final`, `not durable yet`, `not committed`, `temporary idea`, `draft`, `sandbox`, `spike`, `prototype`, `try something`, `play with this`, `test a hypothesis`, `what if`, `maybe`, `could we`, `I'm not sure`, `compare approaches`, `discovery mode`, `research mode`, `workshop this`, and `let's see where this goes`.
+
+Treat these as experiment-end signals: `we decided`, `let's go with`, `this is the direction`, `final decision`, `that's settled`, `make this durable`, `store this`, `remember this`, `record this`, `promote this`, `accept this`, `from now on`, `new rule`, `implement this`, `ship this`, `discard the experiment`, `reject this`, `keep this as an open question`, `wrap this up`, `close the loop`, `end of experiment`, `conclusion`, `we converged`, and `not doing this`.
+
+When an experiment starts, keep ideas provisional unless the user explicitly asks to store them; if they ask to store provisional material, call `remember` with lifecycle `experimental`. When an experiment converges or ends, summarize the likely durable outcome and ask whether to promote, reject, or keep it experimental. Call `promote_memory` only after the user confirms promotion; promotion is the point where an experimental memory may supersede older accepted memories.
+
 When the user asks why the agent chose one approach instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed. Pause and identify the possible correction before continuing. If the exchange reveals durable guidance, offer to store it in MBank, or call `remember` when the user explicitly asks to store it. Do not store the agent's guess as fact before the user confirms the underlying guidance.
 
 ## Offering to capture memory
@@ -47,11 +57,11 @@ When the user asks why the agent chose one approach instead of another, treat it
 After substantive exploration (ideas, direction, tradeoffs, or what is possible):
 
 1. Answer using `get_task_context` and the conversation.
-2. If durable candidates may matter in future sessions but were not explicitly committed, offer to store them in MBank. List one to three atomic candidates with suggested types (use `captureHint` from `describe_memory_types`).
-3. Call `remember` only after the user agrees or explicitly asks to store something.
-4. Do not store rejected options, agent speculation the user did not adopt, or ordinary chat.
+2. If candidates may matter in future sessions but were not explicitly committed, offer accepted storage for durable guidance or experimental storage for provisional ideas. List one to three atomic candidates with suggested types (use `captureHint` from `describe_memory_types`).
+3. Call `remember` only after the user agrees or explicitly asks to store something; use lifecycle `experimental` when the user wants a provisional idea kept without making it authoritative.
+4. Do not promote rejected options, agent speculation the user did not adopt, or ordinary chat.
 
-Suggested types for offer candidates: `note` for vague ideas; `product-open-question` or `technical-open-question` for unresolved options; `product-strategy` or `product-reasoning` for tentative direction; `product-decision` or `technical-decision` only when the user has clearly chosen.
+Suggested types for offer candidates: `note` for vague ideas; `product-open-question` or `technical-open-question` for unresolved options; `product-strategy` or `product-reasoning` for tentative direction; `product-decision` or `technical-decision` only when the user has clearly chosen. Use lifecycle `experimental` for provisional candidates that should not guide normal task recall yet.
 
 Skip the offer when nothing is plausibly durable or the thread was purely meta.
 
@@ -72,6 +82,8 @@ When `get_task_context` returns `canProceed=false`, or any `attentionItems` entr
 Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.
 
 Use `resolve_conflict` when the user clarifies which conflicting memory should remain authoritative. This marks superseded memories so normal retrieval stops returning them while preserving audit history through direct `get`.
+
+Use `promote_memory` when the user confirms an experimental memory should become accepted. Include superseded memory ids and clarification only when the user confirms the promoted memory replaces older accepted guidance.
 
 Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
 

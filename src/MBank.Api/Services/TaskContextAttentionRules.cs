@@ -2,6 +2,27 @@ namespace MBank.Api.Services;
 
 public static class TaskContextAttentionRules
 {
+    public static bool ShouldIncludeExperimentalMemories(TaskContextRequest request)
+    {
+        var text = string.Join(
+            " ",
+            request.Task.Kind,
+            request.Task.Title,
+            request.Task.Description);
+
+        return MemoryAuthoringGuidance.ExperimentalStartSignals.Any(signal =>
+                text.Contains(signal, StringComparison.OrdinalIgnoreCase))
+            || text.Contains("experiment", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("explor", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("brainstorm", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("prototype", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("spike", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("draft", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("hypothesis", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("provisional", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("discovery", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static bool ShouldOfferCapture(string? kind)
     {
         if (string.IsNullOrWhiteSpace(kind))

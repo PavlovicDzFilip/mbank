@@ -492,6 +492,89 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             && x.Description!.Contains("docker compose", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task Experimental_memories_are_hidden_until_promoted()
+    {
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemoryService>();
+        var stored = await service.RememberAsync(new RememberRequest(
+            [
+                new MemoryDraft(
+                    MemoryType.ProductDecision,
+                    "Accepted memory lifecycle guidance remains authoritative until replaced.",
+                    "Experimental lifecycle",
+                    ["memory-lifecycle"],
+                    0.95),
+                new MemoryDraft(
+                    MemoryType.ProductReasoning,
+                    "Try a provisional idea where experimental memories are visible only during discovery.",
+                    "Experimental lifecycle",
+                    ["memory-lifecycle", "experiment"],
+                    0.8,
+                    MemoryLifecycleValue.Experimental)
+            ]),
+            CancellationToken.None);
+        var acceptedId = stored.StoredMemories.Single(x => x.Lifecycle == MemoryLifecycleValue.Accepted).Id;
+        var experimentalId = stored.StoredMemories.Single(x => x.Lifecycle == MemoryLifecycleValue.Experimental).Id;
+
+        var normalContext = await service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Implement lifecycle guidance",
+                "Use memory lifecycle guidance for normal implementation work.",
+                "implementation"),
+            new WorkArea("Experimental lifecycle"),
+            Limit: 5), CancellationToken.None);
+
+        Assert.Contains(normalContext.StrongMatches, x => x.Id == acceptedId);
+        Assert.DoesNotContain(normalContext.StrongMatches, x => x.Id == experimentalId);
+        Assert.DoesNotContain(normalContext.PossibleMatches, x => x.Id == experimentalId);
+
+        var exploratoryContext = await service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Let's experiment with lifecycle guidance",
+                "Thinking out loud, compare approaches and keep this draft provisional.",
+                "exploration"),
+            new WorkArea("Experimental lifecycle"),
+            Limit: 5), CancellationToken.None);
+
+        Assert.Contains(exploratoryContext.StrongMatches.Concat(exploratoryContext.PossibleMatches), x =>
+            x.Id == experimentalId
+            && x.Lifecycle == MemoryLifecycleValue.Experimental
+            && x.Status == MemoryEntry.ExperimentalStatus);
+        Assert.Contains(exploratoryContext.AttentionItems, x =>
+            x.Kind == "experimental_memory"
+            && x.Action == TaskContextAttentionAction.Notice
+            && x.MemoryIds!.Contains(experimentalId));
+
+        var promotion = await service.PromoteMemoryAsync(new PromoteMemoryRequest(
+            experimentalId,
+            [acceptedId],
+            "The user confirmed the experimental lifecycle guidance should replace the old accepted guidance."),
+            CancellationToken.None);
+
+        Assert.True(promotion.Promoted);
+        Assert.Contains(acceptedId, promotion.SupersededMemoryIds!);
+
+        var promotedDetail = await service.GetAsync(experimentalId, CancellationToken.None);
+        var supersededDetail = await service.GetAsync(acceptedId, CancellationToken.None);
+
+        Assert.NotNull(promotedDetail);
+        Assert.NotNull(supersededDetail);
+        Assert.Equal(MemoryEntry.ActiveStatus, promotedDetail.Status);
+        Assert.Equal(MemoryEntry.SupersededStatus, supersededDetail.Status);
+
+        var contextAfterPromotion = await service.GetTaskContextAsync(new TaskContextRequest(
+            new TaskDescription(
+                "Implement promoted lifecycle guidance",
+                "Use memory lifecycle guidance for normal implementation work.",
+                "implementation"),
+            new WorkArea("Experimental lifecycle"),
+            Limit: 5), CancellationToken.None);
+
+        Assert.Contains(contextAfterPromotion.StrongMatches, x => x.Id == experimentalId);
+        Assert.DoesNotContain(contextAfterPromotion.StrongMatches, x => x.Id == acceptedId);
+    }
+
     private static async Task SeedStandardMemoriesAsync(MemoryService service, bool includeMvpWarning = true)
     {
         var memories = new List<MemoryDraft>
