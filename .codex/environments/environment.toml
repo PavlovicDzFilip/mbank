@@ -1,0 +1,16 @@
+version = 1
+name = "MBank"
+
+[setup]
+script = '''
+cd "$CODEX_WORKTREE_PATH"
+git fetch origin master
+git merge --ff-only FETCH_HEAD
+'''
+
+[setup.win32]
+script = '''
+Set-Location $env:CODEX_WORKTREE_PATH
+git fetch origin master
+git merge --ff-only FETCH_HEAD
+'''
