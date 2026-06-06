@@ -6,7 +6,7 @@ namespace MBank.Api.Services;
 public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration)
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
-    public const string LatestInstructionVersion = "1.0.11";
+    public const string LatestInstructionVersion = "1.0.12";
     public const string BootstrapScriptUrl = "https://mbank.engineeringwithfilip.com/bootstrap-agent.sh";
 
     private static readonly string ValidMemoryTypeValues = string.Join(
@@ -16,6 +16,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
     public static readonly IReadOnlyList<string> TaskStartRules =
     [
         "Use the configured `mbank` MCP server proactively for durable project memory and guidance.",
+        "When a repo MBank instruction block version is visible, pass it as `agentInstructionVersion` when calling `start_task` so MBank can detect stale instructions.",
         "After `start_task`, call `get_task_context` with a structured task description for the current focus before proposing a plan, making changes, or choosing a specific technical implementation.",
         "Re-call `get_task_context` when conversation focus changes—new topic, product area, technical subject, or phase such as exploration, planning, implementation, or debugging—before answering substantive project-specific questions, including exploratory ones. Skip re-calls for trivial same-focus follow-ups.",
         "Call `get_task_context` when uncertain how to proceed, before choosing between materially different technical approaches, or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences.",
@@ -35,7 +36,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         "Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.",
         "Use `resolve_conflict` when the user clarifies which conflicting memory should remain authoritative; this marks superseded memories so normal retrieval stops returning them.",
         "Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.",
-        "Report the MBank agent instruction version from onboarding status. If MBank reports that repo instruction files are missing, outdated, or not checkable from the server, suggest a user-approved instruction update or bootstrap run. Do not modify agent instruction files without explicit user approval."
+        "Inspect `instructionStatus` from `start_task`. If it reports outdated instructions, tell the user and ask before updating files or running the bootstrap script. Do not modify agent instruction files without explicit user approval."
     ];
 
     public static readonly string CanonicalInstructionBlock = $"""
@@ -46,9 +47,9 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
 
         At the start of a new product, planning, implementation, debugging, or review task:
 
-        1. Call `start_task` to retrieve current MBank agent rules and working-style guidance for this task.
+        1. Call `start_task` with `agentInstructionVersion` set to this block's version (`{LatestInstructionVersion}`) to retrieve current MBank agent rules and working-style guidance for this task.
         2. Follow the returned rules for the current task.
-        3. Report the MBank agent instruction version from onboarding status. If MBank reports that agent instruction files are missing, outdated, or not checkable from the server, ask the user before updating files or running the bootstrap script.
+        3. Inspect `instructionStatus` from `start_task`. If MBank reports outdated instructions, tell the user and ask before updating files or running the bootstrap script.
         4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
 
         Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; when the user references prior decisions or constraints you have not yet retrieved for this focus; when you are uncertain how to proceed; before choosing between materially different technical approaches; or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip re-calls for trivial same-focus follow-ups.
@@ -102,7 +103,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
 
         Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
 
-        Report the MBank agent instruction version from onboarding status. If MBank reports that this instruction block is missing, outdated, or not checkable from the server, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
+        Inspect `instructionStatus` from `start_task`. If MBank reports that this instruction block is outdated, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
         <!-- mbank:end -->
         """;
 
@@ -112,6 +113,50 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         new("claude", "CLAUDE.md"),
         new("cursor", Path.Combine(".cursor", "rules", "mbank.mdc"))
     ];
+
+    public InstructionStatusResponse GetInstructionStatus(string? agentInstructionVersion)
+    {
+        if (string.IsNullOrWhiteSpace(agentInstructionVersion))
+        {
+            return new InstructionStatusResponse(
+                "unknown",
+                "No MBank instruction version was reported to start_task, so instruction freshness could not be checked.",
+                null,
+                LatestInstructionVersion,
+                BootstrapScriptUrl,
+                RequiresExplicitApproval: true,
+                [
+                    "Pass agentInstructionVersion from the visible mbank:start block when calling start_task."
+                ],
+                "Continue the task. On future start_task calls, pass agentInstructionVersion from the visible mbank:start block when available.");
+        }
+
+        var reportedVersion = agentInstructionVersion.Trim();
+        if (string.Equals(reportedVersion, LatestInstructionVersion, StringComparison.OrdinalIgnoreCase))
+        {
+            return new InstructionStatusResponse(
+                "current",
+                $"The agent reported current MBank instruction version {LatestInstructionVersion}.",
+                reportedVersion,
+                LatestInstructionVersion,
+                BootstrapScriptUrl,
+                RequiresExplicitApproval: true,
+                [],
+                "No instruction update action is needed.");
+        }
+
+        return new InstructionStatusResponse(
+            "outdated",
+            $"The agent reported MBank instruction version {reportedVersion}, but the latest version is {LatestInstructionVersion}.",
+            reportedVersion,
+            LatestInstructionVersion,
+            BootstrapScriptUrl,
+            RequiresExplicitApproval: true,
+            [
+                "MBank agent instructions are outdated. Ask the user before updating the marked MBank block or running the bootstrap script."
+            ],
+            $"Tell the user MBank agent instructions are outdated and ask whether to update the marked block or run `curl -fsSL {BootstrapScriptUrl} | sh`. Do not modify files without explicit approval.");
+    }
 
     public OnboardingStatusResponse CheckOnboarding()
     {
@@ -285,7 +330,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
     {
         return status switch
         {
-            "current" => "No onboarding action is needed.",
+            "current" => "No instruction update action is needed.",
             "outdated" => $"Tell the user MBank agent instructions are outdated and ask whether to update the marked block or run `curl -fsSL {BootstrapScriptUrl} | sh`. Do not modify files without explicit approval.",
             "not_checkable" => $"Report that this MBank server uses agent instruction version {LatestInstructionVersion}. Suggest checking repo instruction files for a current `mbank:start` block, or ask whether to run `curl -fsSL {BootstrapScriptUrl} | sh` from the repository root. Do not modify files without explicit approval.",
             _ => $"Tell the user MBank agent instructions are missing and ask whether to run `curl -fsSL {BootstrapScriptUrl} | sh` from the repository root. Do not modify files without explicit approval."

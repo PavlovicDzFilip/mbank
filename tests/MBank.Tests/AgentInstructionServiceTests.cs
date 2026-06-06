@@ -48,8 +48,12 @@ public sealed class AgentInstructionServiceTests : IDisposable
 
         Assert.Equal(AgentInstructionService.LatestInstructionVersion, block.Version);
         Assert.Contains("start_task", block.Content);
+        Assert.Contains("agentInstructionVersion", block.Content);
+        Assert.Contains(AgentInstructionService.LatestInstructionVersion, block.Content);
         Assert.Contains("get_task_context", block.Content);
         Assert.Contains("resolve_conflict", block.Content);
+        Assert.Contains(AgentInstructionService.TaskStartRules, x =>
+            x.Contains("agentInstructionVersion", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
             x.Contains("get_task_context", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
@@ -81,9 +85,52 @@ public sealed class AgentInstructionServiceTests : IDisposable
         Assert.Contains("Mechanical enforcement for coding rules", block.Content, StringComparison.Ordinal);
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
             x.Contains("Roslyn analyzer", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains("agent instruction version", block.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("instructionStatus", block.Content, StringComparison.Ordinal);
         Assert.Contains(AgentInstructionService.TaskStartRules, x =>
-            x.Contains("not checkable", StringComparison.OrdinalIgnoreCase));
+            x.Contains("instructionStatus", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetInstructionStatus_reports_current_when_agent_reports_latest_version()
+    {
+        var service = CreateService();
+
+        var status = service.GetInstructionStatus(AgentInstructionService.LatestInstructionVersion);
+
+        Assert.Equal("current", status.Status);
+        Assert.Empty(status.Warnings);
+        Assert.Equal(AgentInstructionService.LatestInstructionVersion, status.ReportedVersion);
+        Assert.Contains("reported current", status.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(AgentInstructionService.LatestInstructionVersion, status.LatestVersion);
+    }
+
+    [Fact]
+    public void GetInstructionStatus_reports_outdated_when_agent_reports_non_latest_version()
+    {
+        var service = CreateService();
+
+        var status = service.GetInstructionStatus("0.9.0");
+
+        Assert.Equal("outdated", status.Status);
+        Assert.Equal("0.9.0", status.ReportedVersion);
+        Assert.Contains(status.Warnings, x => x.Contains("outdated", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("0.9.0", status.Summary, StringComparison.Ordinal);
+        Assert.Contains(AgentInstructionService.LatestInstructionVersion, status.Summary, StringComparison.Ordinal);
+        Assert.Contains("bootstrap", status.RecommendedAction, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("explicit approval", status.RecommendedAction, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GetInstructionStatus_reports_unknown_without_agent_version()
+    {
+        var service = CreateService();
+
+        var status = service.GetInstructionStatus(null);
+
+        Assert.Equal("unknown", status.Status);
+        Assert.Null(status.ReportedVersion);
+        Assert.Contains(AgentInstructionService.LatestInstructionVersion, status.LatestVersion, StringComparison.Ordinal);
+        Assert.Contains(status.Warnings, x => x.Contains("agentInstructionVersion", StringComparison.Ordinal));
     }
 
     [Fact]

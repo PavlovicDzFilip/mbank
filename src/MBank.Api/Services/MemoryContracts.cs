@@ -95,14 +95,16 @@ public sealed record TaskContextResponse(
     string Summary,
     IReadOnlyList<MemoryMatch> StrongMatches,
     IReadOnlyList<MemoryMatch> PossibleMatches,
-    OnboardingStatusResponse Onboarding,
     bool CanProceed,
     IReadOnlyList<TaskContextAttentionItem> AttentionItems);
+
+public sealed record StartTaskRequest(
+    string? AgentInstructionVersion = null);
 
 public sealed record StartTaskResponse(
     string Summary,
     IReadOnlyList<AgentRule> Rules,
-    OnboardingStatusResponse Onboarding,
+    InstructionStatusResponse InstructionStatus,
     string NextStep);
 
 public sealed record AgentRule(
@@ -309,6 +311,16 @@ public sealed record ResolveConflictResponse(
     string Message,
     Guid? KeptMemoryId = null,
     IReadOnlyList<Guid>? SupersededMemoryIds = null);
+
+public sealed record InstructionStatusResponse(
+    string Status,
+    string Summary,
+    string? ReportedVersion,
+    string LatestVersion,
+    string BootstrapScriptUrl,
+    bool RequiresExplicitApproval,
+    IReadOnlyList<string> Warnings,
+    string RecommendedAction);
 
 public sealed record PromoteMemoryRequest(
     Guid MemoryId,

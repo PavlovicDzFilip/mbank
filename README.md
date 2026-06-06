@@ -125,7 +125,7 @@ Set `MBANK_PROJECT_TOKEN` to a project token created in the UI. `/mcp` rejects r
 
 ## MCP Tools
 
-- `StartTask`: returns current MBank agent rules, working-style guidance, and instruction-file onboarding status for the current task.
+- `StartTask`: returns current MBank agent rules, working-style guidance, and instruction status for the current task.
 - `Remember`: stores durable product or implementation guidance as one or more atomic memories.
 - `GetTaskContext`: retrieves strong and possible memory matches for the current focus at task start and when conversation focus shifts (including exploration). May return a `capture_offer` attention item for planning or exploration tasks.
 - `DescribeMemoryTypes`: returns memory types with `captureHint` guidance plus `captureOfferPolicy` for when to offer `remember` versus storing silently.
@@ -196,45 +196,3 @@ Supported clients:
 
 Noninteractive usage is available with `--yes` or `-Yes`, but repo instruction updates should still be explicitly approved by the user before an agent runs them.
 
-Manual block:
-
-```md
-<!-- mbank:start version="1.0.10" -->
-## MBank Memory
-
-Use the configured `mbank` MCP server proactively for durable project memory.
-
-At the start of a new product, planning, implementation, debugging, or review task:
-
-1. Call `start_task` to retrieve current MBank agent rules and working-style guidance for this task.
-2. Follow the returned rules for the current task.
-3. Report the MBank agent instruction version from onboarding status. If MBank reports that agent instruction files are missing, outdated, or not checkable from the server, ask the user before updating files or running the bootstrap script.
-4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
-
-Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; when the user references prior decisions or constraints you have not yet retrieved for this focus; when you are uncertain how to proceed; before choosing between materially different technical approaches; or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip re-calls for trivial same-focus follow-ups.
-
-Before proposing a plan, making changes, or answering substantive project-specific questions (including exploration), use memories from the latest `get_task_context` result for the current focus.
-
-Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
-
-When the user asks why the agent chose one approach instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed. Pause and identify the possible correction before continuing. If the exchange reveals durable guidance, offer to store it in MBank, or call `remember` when the user explicitly asks to store it. Do not store the agent's guess as fact before the user confirms the underlying guidance.
-
-For `technical-rule`, `technical-convention`, or `technical-preference`, consider mechanical enforcement (Roslyn analyzer, EditorConfig, linter, CI): recommend tooling first, then a short memory with the diagnostic or rule id.
-
-## Offering to capture memory
-
-After substantive exploration (ideas, direction, tradeoffs, or what is possible), offer to store durable candidates using `captureHint` types from `describe_memory_types`, then call `remember` only after the user agrees. When `get_task_context` returns a `capture_offer` attention item, follow it after answering.
-
-Use `get` to inspect full memory details when a retrieved memory needs source context.
-
-When `get_task_context` returns `canProceed=false`, or any `attentionItems` entry has `action=ask_user`, stop before planning or implementing. Surface the attention item and ask the user the provided question instead of choosing a side silently.
-
-Use `report_conflict` when memories appear inconsistent. Surface the conflict to the user instead of deciding truth automatically.
-
-Use `resolve_conflict` when the user clarifies which conflicting memory should remain authoritative. This marks superseded memories so normal retrieval stops returning them while preserving audit history through direct `get`.
-
-Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
-
-Report the MBank agent instruction version from onboarding status. If MBank reports that this instruction block is missing, outdated, or not checkable from the server, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
-<!-- mbank:end -->
-```

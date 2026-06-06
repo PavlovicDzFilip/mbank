@@ -22,16 +22,16 @@ Project-specific instructions for Codex and other AI coding agents live here.
 - Do not recreate `CURRENT_WORK.md` or `PRODUCT_BOARD.md` unless the user explicitly asks for those files.
 - When durable continuity changes, store it through the configured `mbank` MCP server instead of writing planning notes to local continuity files.
 
-<!-- mbank:start version="1.0.10" -->
+<!-- mbank:start version="1.0.12" -->
 ## MBank Memory
 
 Use the configured `mbank` MCP server proactively for durable project memory.
 
 At the start of a new product, planning, implementation, debugging, or review task:
 
-1. Call `start_task` to retrieve current MBank agent rules and working-style guidance for this task.
+1. Call `start_task` with `agentInstructionVersion` set to this block's version (`1.0.12`) to retrieve current MBank agent rules and working-style guidance for this task.
 2. Follow the returned rules for the current task.
-3. Report the MBank agent instruction version from onboarding status. If MBank reports that agent instruction files are missing, outdated, or not checkable from the server, ask the user before updating files or running the bootstrap script.
+3. Inspect `instructionStatus` from `start_task`. If MBank reports outdated instructions, tell the user and ask before updating files or running the bootstrap script.
 4. Call `get_task_context` with a structured task description for the current focus (title, description, kind, and optional work area).
 
 Re-call `get_task_context` when conversation focus changes before answering substantive project-specific questions. Call again when the user shifts topic, product area, or technical subject; when moving between phases such as exploration, planning, implementation, or debugging; when the user references prior decisions or constraints you have not yet retrieved for this focus; when you are uncertain how to proceed; before choosing between materially different technical approaches; or before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip re-calls for trivial same-focus follow-ups.
@@ -40,6 +40,16 @@ Before proposing a plan, making changes, or answering substantive project-specif
 
 Use `remember` when the user provides durable product or implementation guidance, or after the user agrees to store items you offered from exploration. Do not call `remember` without approval except when the user explicitly asks to store something.
 
+## Experimental memory lifecycle
+
+Use lifecycle `experimental` only for user-approved provisional ideas, hypotheses, drafts, spikes, prototypes, brainstorm outcomes, and discovery notes that should be kept for later review but should not guide normal work yet. Experimental memories are hidden from normal task recall and must not supersede accepted memories.
+
+Treat these as experiment-start signals: `I want to experiment`, `let's experiment`, `let's explore`, `explore options`, `brainstorm`, `ideate`, `thinking out loud`, `rough idea`, `half-baked idea`, `not final`, `not durable yet`, `not committed`, `temporary idea`, `draft`, `sandbox`, `spike`, `prototype`, `try something`, `play with this`, `test a hypothesis`, `what if`, `maybe`, `could we`, `I'm not sure`, `compare approaches`, `discovery mode`, `research mode`, `workshop this`, and `let's see where this goes`.
+
+Treat these as experiment-end signals: `we decided`, `let's go with`, `this is the direction`, `final decision`, `that's settled`, `make this durable`, `store this`, `remember this`, `record this`, `promote this`, `accept this`, `from now on`, `new rule`, `implement this`, `ship this`, `discard the experiment`, `reject this`, `keep this as an open question`, `wrap this up`, `close the loop`, `end of experiment`, `conclusion`, `we converged`, and `not doing this`.
+
+When an experiment starts, keep ideas provisional unless the user explicitly asks to store them; if they ask to store provisional material, call `remember` with lifecycle `experimental`. When an experiment converges or ends, summarize the likely durable outcome and ask whether to promote, reject, or keep it experimental. Call `promote_memory` only after the user confirms promotion; promotion is the point where an experimental memory may supersede older accepted memories.
+
 When the user asks why the agent chose one approach instead of another, treat it as a strong signal that an assumption, preference, or rule may have been missed. Pause and identify the possible correction before continuing. If the exchange reveals durable guidance, offer to store it in MBank, or call `remember` when the user explicitly asks to store it. Do not store the agent's guess as fact before the user confirms the underlying guidance.
 
 ## Offering to capture memory
@@ -47,11 +57,11 @@ When the user asks why the agent chose one approach instead of another, treat it
 After substantive exploration (ideas, direction, tradeoffs, or what is possible):
 
 1. Answer using `get_task_context` and the conversation.
-2. If durable candidates may matter in future sessions but were not explicitly committed, offer to store them in MBank. List one to three atomic candidates with suggested types (use `captureHint` from `describe_memory_types`).
-3. Call `remember` only after the user agrees or explicitly asks to store something.
-4. Do not store rejected options, agent speculation the user did not adopt, or ordinary chat.
+2. If candidates may matter in future sessions but were not explicitly committed, offer accepted storage for durable guidance or experimental storage for provisional ideas. List one to three atomic candidates with suggested types (use `captureHint` from `describe_memory_types`).
+3. Call `remember` only after the user agrees or explicitly asks to store something; use lifecycle `experimental` when the user wants a provisional idea kept without making it authoritative.
+4. Do not promote rejected options, agent speculation the user did not adopt, or ordinary chat.
 
-Suggested types for offer candidates: `note` for vague ideas; `product-open-question` or `technical-open-question` for unresolved options; `product-strategy` or `product-reasoning` for tentative direction; `product-decision` or `technical-decision` only when the user has clearly chosen.
+Suggested types for offer candidates: `note` for vague ideas; `product-open-question` or `technical-open-question` for unresolved options; `product-strategy` or `product-reasoning` for tentative direction; `product-decision` or `technical-decision` only when the user has clearly chosen. Use lifecycle `experimental` for provisional candidates that should not guide normal task recall yet.
 
 Skip the offer when nothing is plausibly durable or the thread was purely meta.
 
@@ -73,9 +83,11 @@ Use `report_conflict` when memories appear inconsistent. Surface the conflict to
 
 Use `resolve_conflict` when the user clarifies which conflicting memory should remain authoritative. This marks superseded memories so normal retrieval stops returning them while preserving audit history through direct `get`.
 
+Use `promote_memory` when the user confirms an experimental memory should become accepted. Include superseded memory ids and clarification only when the user confirms the promoted memory replaces older accepted guidance.
+
 Do not store ordinary conversation, temporary reasoning, or details only relevant to the current response.
 
-Report the MBank agent instruction version from onboarding status. If MBank reports that this instruction block is missing, outdated, or not checkable from the server, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
+Inspect `instructionStatus` from `start_task`. If MBank reports that this instruction block is outdated, ask the user before updating this file or running the bootstrap script. Do not modify agent instruction files without explicit user approval.
 <!-- mbank:end -->
 
 ## Working Notes
