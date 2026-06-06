@@ -121,7 +121,12 @@ public sealed class MemoryService(
         return new RememberResponse(stored, possibleConflicts);
     }
 
-    public async Task<StartTaskResponse> StartTaskAsync(CancellationToken cancellationToken)
+    public Task<StartTaskResponse> StartTaskAsync(CancellationToken cancellationToken)
+    {
+        return StartTaskAsync(null, cancellationToken);
+    }
+
+    public async Task<StartTaskResponse> StartTaskAsync(StartTaskRequest? request, CancellationToken cancellationToken)
     {
         var scope = RequireScope();
         var guidanceMemories = await db.Memories
@@ -145,9 +150,9 @@ public sealed class MemoryService(
             .ToArray();
 
         return new StartTaskResponse(
-            "Loaded current MBank agent rules for this task. Instruction-file updates affect future task startup; use the returned rules now.",
+            "Loaded current MBank agent rules for this task. Instruction updates affect future task startup; use the returned rules now.",
             rules,
-            agentInstructions.CheckOnboarding(),
+            agentInstructions.GetInstructionStatus(request?.AgentInstructionVersion),
             "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration, and when uncertain how to proceed or before specific implementation decisions.");
     }
 
@@ -229,7 +234,6 @@ public sealed class MemoryService(
             summary,
             strongMatches.Select(ToMemoryMatch).ToArray(),
             possibleMatches.Select(ToMemoryMatch).ToArray(),
-            agentInstructions.CheckOnboarding(),
             canProceed,
             attentionItems);
     }

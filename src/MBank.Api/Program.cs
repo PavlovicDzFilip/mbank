@@ -69,6 +69,8 @@ builder.Services
             MBank stores durable project memory and agent guidance for AI coding and product agents.
             At the start of any product, planning, implementation, debugging, or review task,
             call start_task and follow the returned rules for the current task.
+            If a repo MBank instruction block version is visible, pass it as agentInstructionVersion
+            when calling start_task so MBank can detect stale instructions.
             Call get_task_context for the current focus at task start and re-call it when focus shifts
             before substantive project-specific answers, including exploration.
             Call get_task_context when uncertain how to proceed and before specific implementation decisions
@@ -80,8 +82,9 @@ builder.Services
             Use get when a retrieved memory needs source evidence.
             Use report_conflict when memories disagree and surface the conflict to the user.
             Use resolve_conflict when the user clarifies which conflicting memory should remain authoritative.
-            Use check_onboarding to verify that repo agent instructions are installed and current.
-            If MBank reports missing, outdated, or not checkable agent instruction files, notify the user and ask for explicit approval before updating files or running the bootstrap script.
+            Inspect instructionStatus from start_task. If it reports outdated instructions,
+            notify the user and ask for explicit approval before updating files or running the bootstrap script.
+            Use check_onboarding only as a diagnostic tool for repo instruction file inspection.
             """;
     })
     .WithHttpTransport(options => options.Stateless = true)

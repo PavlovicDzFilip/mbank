@@ -121,7 +121,23 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             x!["source"]!.GetValue<string>() == "canonical_instruction"
             && x["text"]!.GetValue<string>().Contains("why one approach was chosen instead of another", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("this task", startTaskContent["summary"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(AgentInstructionService.LatestInstructionVersion, startTaskContent["onboarding"]!["latestVersion"]!.GetValue<string>());
+        Assert.Equal(AgentInstructionService.LatestInstructionVersion, startTaskContent["instructionStatus"]!["latestVersion"]!.GetValue<string>());
+        Assert.Equal("unknown", startTaskContent["instructionStatus"]!["status"]!.GetValue<string>());
+        Assert.Null(startTaskContent["instructionStatus"]!["files"]);
+
+        var startTaskWithReportedVersion = await CallToolAsync(client, startTaskTool, new JsonObject
+        {
+            ["request"] = new JsonObject
+            {
+                ["agentInstructionVersion"] = "0.9.0"
+            }
+        });
+        var reportedVersionContent = GetStructuredContent(startTaskWithReportedVersion);
+        Assert.Equal("outdated", reportedVersionContent["instructionStatus"]!["status"]!.GetValue<string>());
+        Assert.Equal("0.9.0", reportedVersionContent["instructionStatus"]!["reportedVersion"]!.GetValue<string>());
+        Assert.Null(reportedVersionContent["instructionStatus"]!["files"]);
+        Assert.Contains("0.9.0", reportedVersionContent["instructionStatus"]!["summary"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Contains("bootstrap", reportedVersionContent["instructionStatus"]!["recommendedAction"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
 
         var memoryTypes = await CallToolAsync(client, describeMemoryTypesTool, new JsonObject());
         var memoryTypesContent = GetStructuredContent(memoryTypes);
@@ -219,8 +235,8 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
             Assert.False(x.AsObject().ContainsKey("whyRelevant"));
         });
         Assert.NotNull(contextContent["possibleMatches"]);
-        Assert.NotNull(contextContent["onboarding"]);
-        Assert.True(contextContent["onboarding"]!["requiresExplicitApproval"]!.GetValue<bool>());
+        Assert.Null(contextContent["onboarding"]);
+        Assert.Null(contextContent["instructionStatus"]);
         Assert.Null(contextContent["relevantMemories"]);
         Assert.Null(contextContent["warnings"]);
         Assert.Null(contextContent["conflicts"]);

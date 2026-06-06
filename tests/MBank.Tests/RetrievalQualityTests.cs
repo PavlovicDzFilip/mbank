@@ -110,7 +110,9 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
             ]),
             CancellationToken.None);
 
-        var response = await service.StartTaskAsync(CancellationToken.None);
+        var response = await service.StartTaskAsync(
+            new StartTaskRequest(AgentInstructionService.LatestInstructionVersion),
+            CancellationToken.None);
 
         Assert.Contains(response.Rules, x =>
             x.Source == "canonical_instruction"
@@ -123,7 +125,8 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
         Assert.Equal(
             "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration, and when uncertain how to proceed or before specific implementation decisions.",
             response.NextStep);
-        Assert.True(response.Onboarding.RequiresExplicitApproval);
+        Assert.True(response.InstructionStatus.RequiresExplicitApproval);
+        Assert.Equal("current", response.InstructionStatus.Status);
     }
 
     [Fact]

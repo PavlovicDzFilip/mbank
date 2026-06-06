@@ -15,7 +15,7 @@ public static class ProjectStarterPack
     [
         new(
             MemoryType.AgentInstruction,
-            "At the start of product, planning, implementation, debugging, or review work, call `start_task` and follow its rules, then call `get_task_context` for the current focus. Re-call `get_task_context` when conversation focus changes before substantive project-specific answers, when uncertain how to proceed, and before specific implementation decisions.",
+            "At the start of product, planning, implementation, debugging, or review work, call `start_task` with the visible MBank instruction version when available and follow its rules, then call `get_task_context` for the current focus. Re-call `get_task_context` when conversation focus changes before substantive project-specific answers, when uncertain how to proceed, and before specific implementation decisions.",
             "MBank task startup",
             ["mbank", "mcp", "startup"],
             0.98),

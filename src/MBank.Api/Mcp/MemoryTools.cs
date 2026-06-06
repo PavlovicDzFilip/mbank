@@ -9,12 +9,13 @@ namespace MBank.Api.Mcp;
 public static class MemoryTools
 {
     [McpServerTool(ReadOnly = true)]
-    [Description("Begin a product, planning, implementation, debugging, or review task by retrieving current MBank agent rules and working-style guidance. Follow the returned rules for the current task, then call get_task_context for task-specific product and technical context. This tool never edits files; if instruction files are missing, outdated, or not checkable from the server, ask the user before updating them or running bootstrap scripts.")]
+    [Description("Begin a product, planning, implementation, debugging, or review task by retrieving current MBank agent rules, working-style guidance, and instructionStatus. If a repo MBank instruction block version is visible, pass it as agentInstructionVersion so MBank can detect stale instructions. Follow the returned rules for the current task, then call get_task_context for task-specific product and technical context. This tool never edits files; if instructionStatus reports outdated instructions, ask the user before updating files or running bootstrap scripts.")]
     public static Task<StartTaskResponse> StartTask(
         MemoryService memoryService,
-        CancellationToken cancellationToken)
+        [Description("Optional startup metadata from visible repo agent instructions. Pass the version from the mbank:start block when available.")] StartTaskRequest? request = null,
+        CancellationToken cancellationToken = default)
     {
-        return memoryService.StartTaskAsync(cancellationToken);
+        return memoryService.StartTaskAsync(request, cancellationToken);
     }
 
     [McpServerTool(ReadOnly = false, Destructive = false)]
@@ -28,7 +29,7 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = true)]
-    [Description("Get relevant memories for the current task focus. Call at task start, whenever focus shifts (new topic, product area, technical subject, or phase), when uncertain how to proceed, before choosing between materially different technical approaches, and before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip on trivial same-focus follow-ups. Strong matches may guide work; possible matches are hints to confirm before relying on them. Always inspect canProceed and attentionItems. A capture_offer attention item means offer to store durable exploration outcomes after answering, then call remember only if the user agrees. If canProceed is false or any attention item has action=ask_user, stop and ask the user the provided question before planning or implementing. The response may also warn when MBank agent instruction files are missing, outdated, or not checkable from the server; ask the user before updating files or running bootstrap scripts.")]
+    [Description("Get relevant memories for the current task focus. Call at task start, whenever focus shifts (new topic, product area, technical subject, or phase), when uncertain how to proceed, before choosing between materially different technical approaches, and before specific implementation decisions that may depend on project history, prior decisions, constraints, or user preferences. Skip on trivial same-focus follow-ups. Strong matches may guide work; possible matches are hints to confirm before relying on them. Always inspect canProceed and attentionItems. A capture_offer attention item means offer to store durable exploration outcomes after answering, then call remember only if the user agrees. If canProceed is false or any attention item has action=ask_user, stop and ask the user the provided question before planning or implementing.")]
     public static Task<TaskContextResponse> GetTaskContext(
         MemoryService memoryService,
         [Description("Structured description of the task and optional work area.")] TaskContextRequest request,
@@ -78,7 +79,7 @@ public static class MemoryTools
     }
 
     [McpServerTool(ReadOnly = true)]
-    [Description("Check whether supported repo agent instruction files contain the current versioned MBank onboarding block. This tool never edits files. If instructions are missing, outdated, or not checkable from the server, notify the user and require explicit approval before updating files or running the bootstrap script.")]
+    [Description("Diagnostic tool for checking whether supported repo agent instruction files contain the current versioned MBank instruction block. Normal task startup should use start_task instructionStatus instead. This tool never edits files. If instructions are missing, outdated, or not checkable from the server, notify the user and require explicit approval before updating files or running the bootstrap script.")]
     public static OnboardingStatusResponse CheckOnboarding(AgentInstructionService agentInstructions)
     {
         return agentInstructions.CheckOnboarding();
