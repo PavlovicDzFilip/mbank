@@ -284,6 +284,9 @@ namespace MBank.Api.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("LastInstructionUpdateNotificationAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("UserId", "ProjectId");
 
                     b.HasIndex("ProjectId");

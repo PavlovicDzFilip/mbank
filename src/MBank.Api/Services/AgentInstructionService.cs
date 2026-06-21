@@ -158,6 +158,19 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
             $"Tell the user MBank agent instructions are outdated and ask whether to update the marked block or run `curl -fsSL {BootstrapScriptUrl} | sh`. Do not modify files without explicit approval.");
     }
 
+    public InstructionStatusResponse GetInstructionStatusDuringNotificationCooldown(string reportedVersion)
+    {
+        return new InstructionStatusResponse(
+            "current",
+            $"The agent reported MBank instruction version {reportedVersion}. Update notifications are limited to once per week for this user and repository.",
+            reportedVersion,
+            LatestInstructionVersion,
+            BootstrapScriptUrl,
+            RequiresExplicitApproval: true,
+            [],
+            "No instruction update action is needed during the notification cooldown.");
+    }
+
     public OnboardingStatusResponse CheckOnboarding()
     {
         var root = ResolveInspectableRoot();
