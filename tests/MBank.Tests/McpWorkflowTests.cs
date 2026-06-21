@@ -155,6 +155,17 @@ public sealed class McpWorkflowTests(MBankWebApplicationFactory factory)
         Assert.Contains("0.9.0", reportedVersionContent["instructionStatus"]!["summary"]!.GetValue<string>(), StringComparison.Ordinal);
         Assert.Contains("bootstrap", reportedVersionContent["instructionStatus"]!["recommendedAction"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
 
+        var suppressedStartTask = await CallToolAsync(client, startTaskTool, new JsonObject
+        {
+            ["request"] = new JsonObject
+            {
+                ["agentInstructionVersion"] = "0.9.0"
+            }
+        });
+        var suppressedContent = GetStructuredContent(suppressedStartTask);
+        Assert.Equal("current", suppressedContent["instructionStatus"]!["status"]!.GetValue<string>());
+        Assert.Empty(suppressedContent["instructionStatus"]!["warnings"]!.AsArray());
+
         var memoryTypes = await CallToolAsync(client, describeMemoryTypesTool, new JsonObject());
         var memoryTypesContent = GetStructuredContent(memoryTypes);
         Assert.Equal(1, memoryTypesContent["modelVersion"]!.GetValue<int>());

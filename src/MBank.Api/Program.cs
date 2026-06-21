@@ -54,7 +54,9 @@ builder.Services.AddDbContext<MemoryDbContext>(options =>
 
 builder.Services.AddScoped<IEmbeddingService, OpenAiEmbeddingService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<AgentInstructionService>();
+builder.Services.AddScoped<StartTaskInstructionStatusService>();
 builder.Services.AddScoped<MagicLinkAuthenticationService>();
 builder.Services.AddScoped<ProjectOpenAiCredentialService>();
 builder.Services.AddScoped<ProjectWorkspaceService>();

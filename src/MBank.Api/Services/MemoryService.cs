@@ -11,7 +11,7 @@ namespace MBank.Api.Services;
 public sealed class MemoryService(
     MemoryDbContext db,
     IEmbeddingService embeddings,
-    AgentInstructionService agentInstructions,
+    StartTaskInstructionStatusService startTaskInstructionStatuses,
     MemoryScopeProvider currentScope)
 {
     private const double RrfK = 60;
@@ -131,6 +131,11 @@ public sealed class MemoryService(
     public async Task<StartTaskResponse> StartTaskAsync(StartTaskRequest? request, CancellationToken cancellationToken)
     {
         var scope = RequireScope();
+        var instructionStatus = await startTaskInstructionStatuses.GetAsync(
+            scope,
+            request?.AgentInstructionVersion,
+            cancellationToken);
+
         var guidanceMemories = await db.Memories
             .AsNoTracking()
             .Where(x => x.ProjectId == scope.ProjectId && x.Status == MemoryEntry.ActiveStatus)
@@ -154,7 +159,7 @@ public sealed class MemoryService(
         return new StartTaskResponse(
             "Loaded current MBank agent rules for this task. Instruction updates affect future task startup; use the returned rules now.",
             rules,
-            agentInstructions.GetInstructionStatus(request?.AgentInstructionVersion),
+            instructionStatus,
             "Call `get_task_context` with this task's current focus (title, description, kind, and optional work area). Re-call it when conversation focus changes before substantive project-specific answers, including exploration, and when uncertain how to proceed or before specific implementation decisions.");
     }
 

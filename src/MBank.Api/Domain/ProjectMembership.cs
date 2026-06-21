@@ -12,6 +12,8 @@ public sealed class ProjectMembership
 
     public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.UtcNow;
 
+    public DateTimeOffset? LastInstructionUpdateNotificationAt { get; private set; }
+
     public static ProjectMembership Create(UserId userId, ProjectId projectId)
     {
         return new ProjectMembership

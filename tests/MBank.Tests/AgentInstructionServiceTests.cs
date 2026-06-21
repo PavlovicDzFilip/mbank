@@ -121,6 +121,21 @@ public sealed class AgentInstructionServiceTests : IDisposable
     }
 
     [Fact]
+    public void GetInstructionStatusDuringNotificationCooldown_reports_current()
+    {
+        var service = CreateService();
+
+        var status = service.GetInstructionStatusDuringNotificationCooldown("0.9.0");
+
+        Assert.Equal("current", status.Status);
+        Assert.Equal("0.9.0", status.ReportedVersion);
+        Assert.Equal(AgentInstructionService.LatestInstructionVersion, status.LatestVersion);
+        Assert.Empty(status.Warnings);
+        Assert.Contains("once per week", status.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("no instruction update action", status.RecommendedAction, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void GetInstructionStatus_reports_unknown_without_agent_version()
     {
         var service = CreateService();
