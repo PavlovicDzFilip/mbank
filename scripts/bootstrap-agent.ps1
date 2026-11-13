@@ -2,12 +2,16 @@ param(
     [ValidateSet("codex", "claude", "cursor", "all")]
     [string] $Client = "all",
 
-    [string] $ServerUrl = "https://mbank.engineeringwithfilip.com",
+    [string] $ServerUrl = $env:MBANK_SERVER_URL,
 
     [switch] $Yes
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($ServerUrl)) {
+    throw "Pass -ServerUrl with the running MBank server URL or set MBANK_SERVER_URL."
+}
 
 function Get-Targets {
     switch ($Client) {

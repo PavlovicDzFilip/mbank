@@ -3,11 +3,14 @@ using MBank.Api.Domain;
 
 namespace MBank.Api.Services;
 
-public sealed partial class AgentInstructionService(IHostEnvironment environment, IConfiguration configuration)
+public sealed partial class AgentInstructionService(
+    IHostEnvironment environment,
+    IConfiguration configuration,
+    ServerUrls serverUrls)
 {
     // Bump this version whenever CanonicalInstructionBlock changes so agents can detect stale repo instructions.
     public const string LatestInstructionVersion = "1.0.12";
-    public const string BootstrapScriptUrl = "https://mbank.engineeringwithfilip.com/bootstrap-agent.sh";
+    private string BootstrapScriptUrl => serverUrls.GetUrl("/bootstrap-agent.sh");
 
     private static readonly string ValidMemoryTypeValues = string.Join(
         ", ",
@@ -155,7 +158,7 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
             [
                 "MBank agent instructions are outdated. Ask the user before updating the marked MBank block or running the bootstrap script."
             ],
-            $"Tell the user MBank agent instructions are outdated and ask whether to update the marked block or run `curl -fsSL {BootstrapScriptUrl} | sh`. Do not modify files without explicit approval.");
+            BuildRecommendedAction("outdated"));
     }
 
     public InstructionStatusResponse GetInstructionStatusDuringNotificationCooldown(string reportedVersion)
@@ -344,13 +347,13 @@ public sealed partial class AgentInstructionService(IHostEnvironment environment
         return status switch
         {
             "current" => "No instruction update action is needed.",
-            "outdated" => $"Tell the user MBank agent instructions are outdated and ask whether to update the marked block or run `curl -fsSL {BootstrapScriptUrl} | sh`. Do not modify files without explicit approval.",
-            "not_checkable" => $"Report that this MBank server uses agent instruction version {LatestInstructionVersion}. Suggest checking repo instruction files for a current `mbank:start` block, or ask whether to run `curl -fsSL {BootstrapScriptUrl} | sh` from the repository root. Do not modify files without explicit approval.",
-            _ => $"Tell the user MBank agent instructions are missing and ask whether to run `curl -fsSL {BootstrapScriptUrl} | sh` from the repository root. Do not modify files without explicit approval."
+            "outdated" => "Tell the user MBank agent instructions are outdated and ask whether to update the marked block or run the bootstrap script for this MBank instance. Do not modify files without explicit approval.",
+            "not_checkable" => $"Report that this MBank server uses agent instruction version {LatestInstructionVersion}. Suggest checking repo instruction files for a current `mbank:start` block, or ask whether to run the bootstrap script for this MBank instance from the repository root. Do not modify files without explicit approval.",
+            _ => "Tell the user MBank agent instructions are missing and ask whether to run the bootstrap script for this MBank instance from the repository root. Do not modify files without explicit approval."
         };
     }
 
-    private static OnboardingStatusResponse BuildNotCheckableStatus()
+    private OnboardingStatusResponse BuildNotCheckableStatus()
     {
         return new OnboardingStatusResponse(
             "not_checkable",

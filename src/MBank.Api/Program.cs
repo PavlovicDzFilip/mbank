@@ -54,6 +54,8 @@ builder.Services.AddDbContext<MemoryDbContext>(options =>
 
 builder.Services.AddScoped<IEmbeddingService, OpenAiEmbeddingService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<ServerUrls>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<AgentInstructionService>();
 builder.Services.AddScoped<StartTaskInstructionStatusService>();

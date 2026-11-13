@@ -33,10 +33,12 @@ WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 COPY --from=build /app/publish .
+COPY LICENSE .
 USER $APP_UID
 ENTRYPOINT ["dotnet", "MBank.Api.dll"]
 
 FROM mcr.microsoft.com/dotnet/aspnet:${ASPNET_VERSION} AS migrate
 WORKDIR /app
 COPY --from=migration-build /app/migrate .
+COPY LICENSE .
 ENTRYPOINT ["dotnet", "MBank.MigrationService.dll"]
