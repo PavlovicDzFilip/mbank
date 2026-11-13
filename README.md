@@ -2,7 +2,7 @@
 
 MCP-first memory storage and retrieval for AI agents.
 
-## Current MVP
+## Features
 
 - ASP.NET Core 10 MCP server.
 - Streamable HTTP MCP endpoint at `/mcp`.
@@ -14,8 +14,8 @@ MCP-first memory storage and retrieval for AI agents.
 ## Prerequisites
 
 - .NET SDK **10.0.103** exactly (`global.json` pins this version for local dev, CI, and Docker). Install with `dotnet-install.sh --version 10.0.103`, or use a Fedora/RHEL package that ships SDK 10.0.103.
-- Docker Desktop running with the Linux engine enabled.
-- Local secrets configured with .NET user secrets for the project you run.
+- A running Docker engine with Linux container support.
+- An OpenAI API key for embeddings and a password for the local Postgres instance.
 
 ## Run Locally With Aspire
 
@@ -34,55 +34,7 @@ Start the local runtime:
 dotnet run --project src\MBank.AppHost\MBank.AppHost.csproj
 ```
 
-The AppHost starts the Aspire dashboard, applies EF Core migrations through the `migrate` resource, then starts the `api` resource. Development magic-link email goes to the `mailpit` resource.
-
-Production deployment does not use the local AppHost. Merging to `master` runs GitHub Actions (test, lint, build, deploy to Hetzner). Use `scripts\Deploy-MBankHetzner.ps1` only as an emergency fallback if Actions is unavailable.
-
-### Direct API Runs
-
-Aspire normally supplies API configuration. If you run `MBank.Api` directly from the local project checkout, configure the API project secrets:
-
-```powershell
-dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "OpenAI:ApiKey" "<openai-api-key>"
-dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "ConnectionStrings:MemoryDb" "Host=localhost;Port=5432;Database=mbank;Username=mbank;Password=<postgres-password>"
-dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "Smtp:Host" "<smtp-host>"
-dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "Smtp:Port" "<smtp-port>"
-dotnet user-secrets --project src\MBank.Api\MBank.Api.csproj set "Smtp:FromAddress" "<from-address>"
-```
-
-Use a Postgres password and SMTP settings that match your local runtime.
-
-## Production deploy (GitHub Actions)
-
-Every pull request and merge-queue run executes **CI** (restore, `dotnet format`, Release build with analyzers, tests, and a Docker build of both `api` and `migrate` images). Pushing to `master` after a merge runs **Deploy production**: the same checks, then Docker images tagged with UTC `yyyyMMddHHmmss`, registry push, SSH deploy in `/vault`, migrate, recreate `mbank-api`, and a smoke `curl` against `/onboarding/agent-instructions`.
-
-Require the **CI** check on `master` branch protection (or merge queue) so pull requests cannot merge when the Docker build fails.
-
-### One-time GitHub setup
-
-Repository secrets:
-
-| Secret | Purpose |
-| --- | --- |
-| `REGISTRY_USERNAME` | Push to `registry.engineeringwithfilip.com` |
-| `REGISTRY_PASSWORD` | Registry credentials |
-| `SSH_PRIVATE_KEY` | SSH key for production deploy |
-
-Enable a **merge queue** on `master` (branch protection) so when another PR merges while yours is queued, GitHub resets the queue entry and re-runs CI on the updated base. Without a merge queue, update your PR branch after `master` moves so CI runs on the latest code.
-
-### Server layout
-
-- Compose and `mbank.env` live on the host under `/vault` (not in this repo).
-- `mbank.env` shape: see `docs/mbank.env.example`.
-- Deploy sets `MBANK_VERSION` to the image tag; compose should reference `${MBANK_VERSION}` for `mbank/api` and `mbank/migrate`.
-
-### Verify or recover
-
-- **Actions:** check the latest *Deploy production* workflow run.
-- **On server:** `docker compose ps` in `/vault`; migrate logs from the last `mbank-migrate` run.
-- **Failed migration:** fix forward in code, merge to `master`, redeploy; do not recreate `mbank-api` until migrate succeeds (the workflow stops on migrate failure).
-- **Rollback (manual):** SSH to `/vault`, set `MBANK_VERSION` to a previous datetime tag, then `docker compose pull`, run migrate, recreate `mbank-api`.
-- **Rotate app secrets:** edit `mbank.env`, then `docker compose up -d --no-deps --force-recreate mbank-api`.
+The AppHost starts the Aspire dashboard, applies database migrations through the `migrate` resource, then starts the `api` resource. Development magic-link email goes to the `mailpit` resource.
 
 ### URLs, UI, and MCP
 
@@ -117,6 +69,17 @@ bearer_token_env_var = "MBANK_PROJECT_TOKEN"
 
 Mailpit's web UI and HTTP API are listed in the Aspire dashboard, which lets local automation verify that magic-link emails were received without mailbox credentials.
 
+### Running without Aspire
+
+Supply a Postgres database with pgvector, an OpenAI API key, and SMTP settings. [docs/mbank.env.example](docs/mbank.env.example) lists the environment variables. Set `MagicLink__PublicBaseUrl` to the instance's external base URL when serving MBank behind a proxy. MBank uses that URL for sign-in links, MCP client configuration, and agent setup links.
+
+Set `ConnectionStrings__MemoryDb` for both processes and apply migrations before starting the API. If you are upgrading a database with legacy users whose email is null, populate their email addresses before running the migrations.
+
+```sh
+dotnet run --project src/MBank.MigrationService
+dotnet run --project src/MBank.Api
+```
+
 ## Provisioning
 
 Sign in at `/login`, then create projects and project tokens in `/projects`. Project tokens are returned once when created. Store only the returned token in client configuration; MBank stores its hash plus non-secret display prefix/suffix metadata.
@@ -144,47 +107,18 @@ The bootstrap scripts only add or update content between `<!-- mbank:start ... -
 
 When the MBank instruction text changes, bump the canonical block version in the server so agents can detect stale repo instructions. When MCP tools change, update the canonical agent instructions in the same slice.
 
-Public URL:
-
-```bash
-curl -fsSL https://mbank.engineeringwithfilip.com/bootstrap-agent.sh | sh
-```
-
-Windows PowerShell:
+Run these commands from the root of the repository you want to configure. Replace `https://mbank.example.com` with the base URL of your MBank instance. For local development, copy the `api` URL from the Aspire dashboard.
 
 ```powershell
-Invoke-WebRequest https://mbank.engineeringwithfilip.com/bootstrap-agent.ps1 -OutFile bootstrap-agent.ps1
-.\bootstrap-agent.ps1
-```
-
-By default, the public script updates all supported instruction targets:
-
-- `AGENTS.md`
-- `CLAUDE.md`
-- `.cursor/rules/mbank.mdc`
-
-Inspect-first usage:
-
-```bash
-curl -fsSL https://mbank.engineeringwithfilip.com/bootstrap-agent.sh -o bootstrap-agent.sh
-less bootstrap-agent.sh
-sh bootstrap-agent.sh
-```
-
-```powershell
-Invoke-WebRequest https://mbank.engineeringwithfilip.com/bootstrap-agent.ps1 -OutFile bootstrap-agent.ps1
-Get-Content .\bootstrap-agent.ps1
-.\bootstrap-agent.ps1
-```
-
-Local development usage (use the `api` HTTP URL from the Aspire dashboard as `-ServerUrl` / `--server-url`):
-
-```powershell
-.\scripts\bootstrap-agent.ps1 -Client codex -ServerUrl http://127.0.0.1:<api-port>
+$mbankUrl = "https://mbank.example.com"
+Invoke-WebRequest "$mbankUrl/bootstrap-agent.ps1" -OutFile bootstrap-agent.ps1
+.\bootstrap-agent.ps1 -Client codex -ServerUrl $mbankUrl
 ```
 
 ```bash
-sh scripts/bootstrap-agent.sh --client codex --server-url http://127.0.0.1:<api-port>
+mbank_url="https://mbank.example.com"
+curl -fsSL "$mbank_url/bootstrap-agent.sh" -o bootstrap-agent.sh &&
+  sh bootstrap-agent.sh --client codex --server-url "$mbank_url"
 ```
 
 Supported clients:
@@ -196,3 +130,17 @@ Supported clients:
 
 Noninteractive usage is available with `--yes` or `-Yes`, but repo instruction updates should still be explicitly approved by the user before an agent runs them.
 
+You can also set `MBANK_SERVER_URL` in place of the URL argument.
+
+## Build and test
+
+```sh
+dotnet build MBank.slnx -c Release
+dotnet test tests/MBank.Tests/MBank.Tests.csproj -c Release
+```
+
+Integration tests start a pgvector container through Testcontainers and require a running Docker engine. They use test doubles for email and embeddings.
+
+## License
+
+MBank is available under the [MIT License](LICENSE).

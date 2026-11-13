@@ -1,8 +1,11 @@
 using System.IO;
+using MBank.Api.Options;
 using MBank.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace MBank.Tests;
 
@@ -102,6 +105,24 @@ public sealed class AgentInstructionServiceTests : IDisposable
         Assert.Equal(AgentInstructionService.LatestInstructionVersion, status.ReportedVersion);
         Assert.Contains("reported current", status.Summary, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(AgentInstructionService.LatestInstructionVersion, status.LatestVersion);
+        Assert.Equal("/bootstrap-agent.sh", status.BootstrapScriptUrl);
+    }
+
+    [Fact]
+    public void Bootstrap_url_uses_the_request_base_path_or_the_configured_public_url()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Scheme = "http";
+        httpContext.Request.Host = new HostString("localhost", 5221);
+        httpContext.Request.PathBase = "/mbank";
+        var accessor = new TestHttpContextAccessor { HttpContext = httpContext };
+        var serverUrls = new ServerUrls(Options.Create(new MagicLinkOptions()), accessor);
+
+        Assert.Equal("http://localhost:5221/mbank/bootstrap-agent.sh", serverUrls.GetUrl("/bootstrap-agent.sh"));
+
+        var options = Options.Create(new MagicLinkOptions { PublicBaseUrl = "https://mbank.example.test/instance/" });
+        var configuredServerUrls = new ServerUrls(options, accessor);
+        Assert.Equal("https://mbank.example.test/instance/bootstrap-agent.sh", configuredServerUrls.GetUrl("/bootstrap-agent.sh"));
     }
 
     [Fact]
@@ -213,14 +234,14 @@ public sealed class AgentInstructionServiceTests : IDisposable
     }
 
     [Fact]
-    public void Bootstrap_scripts_default_to_all_targets_and_public_server()
+    public void Bootstrap_scripts_default_to_all_targets_and_use_the_supplied_server()
     {
         var repoRoot = FindRepositoryRoot();
         var shell = File.ReadAllText(Path.Combine(repoRoot, "scripts", "bootstrap-agent.sh"));
         var powershell = File.ReadAllText(Path.Combine(repoRoot, "scripts", "bootstrap-agent.ps1"));
 
         Assert.Contains("DEFAULT_CLIENT=\"all\"", shell);
-        Assert.Contains("DEFAULT_SERVER_URL=\"https://mbank.engineeringwithfilip.com\"", shell);
+        Assert.Contains("SERVER_URL=\"${MBANK_SERVER_URL:-}\"", shell);
         Assert.DoesNotContain("\r\n", shell);
         Assert.Contains("AGENTS.md", shell);
         Assert.Contains("CLAUDE.md", shell);
@@ -228,7 +249,7 @@ public sealed class AgentInstructionServiceTests : IDisposable
         Assert.Contains("printed_mbank", shell);
 
         Assert.Contains("[string] $Client = \"all\"", powershell);
-        Assert.Contains("[string] $ServerUrl = \"https://mbank.engineeringwithfilip.com\"", powershell);
+        Assert.Contains("[string] $ServerUrl = $env:MBANK_SERVER_URL", powershell);
         Assert.Contains("AGENTS.md", powershell);
         Assert.Contains("CLAUDE.md", powershell);
         Assert.Contains(".cursor/rules/mbank.mdc", powershell);
@@ -244,14 +265,25 @@ public sealed class AgentInstructionServiceTests : IDisposable
             })
             .Build();
 
-        return new AgentInstructionService(new TestHostEnvironment(_root), configuration);
+        return new AgentInstructionService(
+            new TestHostEnvironment(_root),
+            configuration,
+            new ServerUrls(Options.Create(new MagicLinkOptions()), new TestHttpContextAccessor()));
     }
 
     private static AgentInstructionService CreateServiceWithoutConfiguredRoot(string runtimeRoot)
     {
         var configuration = new ConfigurationBuilder().Build();
 
-        return new AgentInstructionService(new TestHostEnvironment(runtimeRoot), configuration);
+        return new AgentInstructionService(
+            new TestHostEnvironment(runtimeRoot),
+            configuration,
+            new ServerUrls(Options.Create(new MagicLinkOptions()), new TestHttpContextAccessor()));
+    }
+
+    private sealed class TestHttpContextAccessor : IHttpContextAccessor
+    {
+        public HttpContext? HttpContext { get; set; }
     }
 
     private static string FindRepositoryRoot()

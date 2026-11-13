@@ -59,7 +59,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("DEFAULT_CLIENT=\"all\"", script);
-        Assert.Contains("https://mbank.engineeringwithfilip.com", script);
+        Assert.Contains("--server-url", script);
         Assert.Contains("AGENTS.md", script);
         Assert.Contains("CLAUDE.md", script);
         Assert.Contains(".cursor/rules/mbank.mdc", script);
@@ -79,7 +79,7 @@ public sealed class RetrievalQualityTests(MBankWebApplicationFactory factory)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("[string] $Client = \"all\"", script);
-        Assert.Contains("https://mbank.engineeringwithfilip.com", script);
+        Assert.Contains("-ServerUrl", script);
         Assert.Contains("AGENTS.md", script);
         Assert.Contains("CLAUDE.md", script);
         Assert.Contains(".cursor/rules/mbank.mdc", script);

@@ -1,5 +1,6 @@
 @page "/projects/{id:guid}"
 @model MBank.Api.Pages.Projects.DetailModel
+@inject MBank.Api.Services.ServerUrls ServerUrls
 @{
     ViewData["Title"] = Model.Project?.Name ?? "Project";
     var tokenCount = Model.Tokens.Count;
@@ -53,6 +54,7 @@
 
             @if (!string.IsNullOrWhiteSpace(Model.OnboardingGuide) || !string.IsNullOrWhiteSpace(Model.IssuedToken))
             {
+                var serverUrl = ServerUrls.GetUrl(Microsoft.AspNetCore.Http.PathString.Empty);
                 <section class="workspace-section onboarding-guide" aria-labelledby="agent-setup-title">
                     <div class="section-toolbar">
                         <div>
@@ -74,19 +76,20 @@
                         <p class="setup-copy">Use the token above as <code>MBANK_PROJECT_TOKEN</code>, then add this MCP server to your client:</p>
                         <pre class="setup-code"><code>[mcp_servers.mbank]
 enabled = true
-url = "https://mbank.engineeringwithfilip.com/mcp"
+url = "@(ServerUrls.GetUrl("/mcp"))"
 bearer_token_env_var = "MBANK_PROJECT_TOKEN"</code></pre>
                     }
 
                     <div class="setup-grid">
                         <div>
                             <h3>macOS or Linux</h3>
-                            <pre class="setup-code"><code>curl -fsSL https://mbank.engineeringwithfilip.com/bootstrap-agent.sh | sh</code></pre>
+                            <pre class="setup-code"><code>curl -fsSL "@(ServerUrls.GetUrl("/bootstrap-agent.sh"))" -o bootstrap-agent.sh
+sh bootstrap-agent.sh --server-url "@serverUrl"</code></pre>
                         </div>
                         <div>
                             <h3>Windows PowerShell</h3>
-                            <pre class="setup-code"><code>Invoke-WebRequest https://mbank.engineeringwithfilip.com/bootstrap-agent.ps1 -OutFile bootstrap-agent.ps1
-.\bootstrap-agent.ps1</code></pre>
+                            <pre class="setup-code"><code>Invoke-WebRequest "@(ServerUrls.GetUrl("/bootstrap-agent.ps1"))" -OutFile bootstrap-agent.ps1
+.\bootstrap-agent.ps1 -ServerUrl "@serverUrl"</code></pre>
                         </div>
                     </div>
                 </section>

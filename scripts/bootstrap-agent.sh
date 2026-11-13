@@ -2,15 +2,15 @@
 set -eu
 
 DEFAULT_CLIENT="all"
-DEFAULT_SERVER_URL="https://mbank.engineeringwithfilip.com"
 CLIENT="$DEFAULT_CLIENT"
-SERVER_URL="$DEFAULT_SERVER_URL"
+SERVER_URL="${MBANK_SERVER_URL:-}"
 YES="0"
 
 usage() {
     cat <<USAGE
 Usage: bootstrap-agent.sh [--client codex|claude|cursor|all] [--server-url URL] [--yes]
 
+Provide --server-url or set MBANK_SERVER_URL.
 Fetches the canonical MBank instruction block from a running MBank server and
 adds or updates it in repo agent instruction files. By default, it updates
 AGENTS.md, CLAUDE.md, and .cursor/rules/mbank.mdc. The script only changes
@@ -29,6 +29,10 @@ while [ "$#" -gt 0 ]; do
             shift
             ;;
         --server-url)
+            if [ "$#" -lt 2 ]; then
+                echo "Missing value for --server-url." >&2
+                exit 1
+            fi
             SERVER_URL="${2:-}"
             shift 2
             ;;
@@ -62,7 +66,7 @@ case "$CLIENT" in
 esac
 
 if [ -z "$SERVER_URL" ]; then
-    echo "Server URL is required." >&2
+    echo "Pass --server-url with the running MBank server URL or set MBANK_SERVER_URL." >&2
     exit 1
 fi
 
